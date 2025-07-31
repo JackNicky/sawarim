@@ -17,8 +17,8 @@
         .book-content { line-height: 2.2; }
         .disabled-btn { opacity: 0.5; cursor: not-allowed; }
         .loader {
-            border: 5px solid #f3f3f3; /* Light grey */
-            border-top: 5px solid #ca8a04; /* Yellow */
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ca8a04;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -86,7 +86,7 @@
         let currentFontSize = 18;
         let bookPages = [];
         let currentPageIndex = 0;
-        let allBooks = []; // سيتم ملؤها عند التحميل الأولي
+        let allBooks = []; 
 
         // --- إدارة الحالة (المفضلة والعلامات المرجعية) ---
         const getFavorites = () => JSON.parse(localStorage.getItem('sawarim_favorites')) || [];
@@ -120,10 +120,7 @@
                 booksGrid.innerHTML += `
                     <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer group" data-book-id="${book.id}">
                         <img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover pointer-events-none" onerror="this.onerror=null;this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';">
-                        <div class="p-4 pointer-events-none">
-                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
-                            <p class="text-gray-400 text-sm">${book.author}</p>
-                        </div>
+                        <div class="p-4 pointer-events-none"><h3 class="font-bold text-lg text-white">${book.title}</h3><p class="text-gray-400 text-sm">${book.author}</p></div>
                         <div class="absolute top-2 right-2"><button class="favorite-btn p-2 rounded-full ${isFavorite ? 'bg-red-500' : 'bg-gray-700 bg-opacity-50'} text-white" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button></div>
                         <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"><span class="text-white text-xl font-bold">اقرأ الآن</span></div>
                     </div>`;
@@ -134,7 +131,7 @@
             document.querySelectorAll('.favorite-btn').forEach(btn => btn.addEventListener('click', () => toggleFavorite(btn.dataset.bookId)));
         }
         
-        async function handleBookClick(bookId) {
+        async function handleBookClick(bookId, volumeIndex = null, pageNumber = null) {
             const bookInfo = allBooks.find(b => b.id == bookId);
             if (!bookInfo) return;
             currentBookId = bookInfo.id;
@@ -148,10 +145,10 @@
                 return;
             }
 
-            if (bookDetails.volumes.length > 1) {
+            if (bookDetails.volumes.length > 1 && volumeIndex === null) {
                 openVolumeSelector(bookInfo, bookDetails.volumes);
             } else {
-                openReader(bookInfo, bookDetails.volumes, 0);
+                openReader(bookInfo, bookDetails.volumes, volumeIndex || 0, pageNumber);
             }
         }
 
@@ -160,7 +157,7 @@
                 <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
                     <div class="flex justify-between items-center p-4 border-b border-gray-700">
                         <h2 class="text-xl font-bold text-white">اختر جزء من: ${bookInfo.title}</h2>
-                        <button id="close-volumes-modal" class="p-2 rounded-full hover:bg-red-500 transition duration-300" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        <button id="close-volumes-modal" class="p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                     </div>
                     <div id="volumes-list" class="p-4 space-y-2 max-h-96 overflow-y-auto"></div>
                 </div>`;
@@ -179,17 +176,18 @@
             volumesModalContainer.querySelector('#close-volumes-modal').onclick = () => volumesModalContainer.style.display = 'none';
         }
 
-        function openReader(bookInfo, volumes, volumeIndex) {
+        function openReader(bookInfo, volumes, volumeIndex, pageNumber = null) {
             currentVolumeIndex = volumeIndex;
             const volume = volumes[currentVolumeIndex];
             bookPages = volume.content;
 
             readerModalContainer.innerHTML = `
-                <div class="bg-gray-800 w-full h-full md:w-4/5 md:h-5/6 lg:w-2/3 md:rounded-lg shadow-xl flex flex-col">
+                <div id="reader-main" class="bg-gray-800 w-full h-full md:w-4/5 md:h-5/6 lg:w-2/3 md:rounded-lg shadow-xl flex flex-col">
                     <div class="flex justify-between items-center p-4 border-b border-gray-700">
                         <h2 id="reader-title" class="text-xl font-bold text-white">${bookInfo.title} - ${volume.volumeTitle}</h2>
-                        <div class="flex items-center space-x-2 sm:space-x-4 space-x-reverse">
-                            <button id="toc-btn" class="p-2 rounded-full hover:bg-gray-700" title="الفهرس"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 5h10v10H5V5z" /><path d="M7 7h6v2H7V7zm0 4h6v2H7v-2z" /></svg></button>
+                        <div class="flex items-center space-x-1 sm:space-x-2 space-x-reverse">
+                            <button id="fullscreen-btn" class="p-2 rounded-full hover:bg-gray-700" title="ملء الشاشة"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg></button>
+                            <button id="toc-btn" class="p-2 rounded-full hover:bg-gray-700" title="الفهرس"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 5h10v10H5V5z" /><path d="M7 7h6v2H7V7zm0 4h6v2H7v-2z" /></svg></button>
                             <button id="decrease-font" class="p-2 rounded-full hover:bg-gray-700" title="تصغير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg></button>
                             <span class="text-lg w-6 text-center">A</span>
                             <button id="increase-font" class="p-2 rounded-full hover:bg-gray-700" title="تكبير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg></button>
@@ -208,16 +206,27 @@
             const readerContent = readerModalContainer.querySelector('#reader-content');
             readerContent.style.fontSize = `${currentFontSize}px`;
             
-            const bookmarks = getPageBookmarks();
-            const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
-            currentPageIndex = bookmarks[bookmarkKey] || 0;
+            if (pageNumber) {
+                currentPageIndex = bookPages.findIndex(p => p.pageNumber == pageNumber);
+                if (currentPageIndex === -1) currentPageIndex = 0;
+            } else {
+                const bookmarks = getPageBookmarks();
+                const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
+                currentPageIndex = bookmarks[bookmarkKey] || 0;
+            }
             
             displayCurrentPage();
             readerModalContainer.style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
             // ربط الأحداث للعناصر الجديدة
-            readerModalContainer.querySelector('#close-modal').onclick = () => { readerModalContainer.style.display = 'none'; document.body.style.overflow = 'auto'; };
+            readerModalContainer.querySelector('#close-modal').onclick = () => {
+                readerModalContainer.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                // مسح الرابط عند الإغلاق
+                history.pushState("", document.title, window.location.pathname + window.location.search);
+            };
+            readerModalContainer.querySelector('#fullscreen-btn').onclick = toggleFullScreen;
             readerModalContainer.querySelector('#toc-btn').onclick = openToc;
             readerModalContainer.querySelector('#next-page-btn').onclick = () => { if (currentPageIndex < bookPages.length - 1) { currentPageIndex++; displayCurrentPage(); } };
             readerModalContainer.querySelector('#prev-page-btn').onclick = () => { if (currentPageIndex > 0) { currentPageIndex--; displayCurrentPage(); } };
@@ -226,6 +235,7 @@
             readerModalContainer.querySelector('#bookmark-page-btn').onclick = () => {
                 const bookmarkBtn = readerModalContainer.querySelector('#bookmark-page-btn');
                 const bookmarks = getPageBookmarks();
+                const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
                 bookmarks[bookmarkKey] = currentPageIndex;
                 savePageBookmarks(bookmarks);
                 bookmarkBtn.classList.add('text-yellow-400');
@@ -248,6 +258,11 @@
             prevPageBtn.classList.toggle('disabled-btn', currentPageIndex === 0);
             nextPageBtn.disabled = currentPageIndex === bookPages.length - 1;
             nextPageBtn.classList.toggle('disabled-btn', currentPageIndex === bookPages.length - 1);
+            
+            // تحديث رابط الصفحة
+            const hash = `#/book/${currentBookId}/volume/${currentVolumeIndex}/page/${currentPageData.pageNumber}`;
+            // استخدام replaceState لتجنب إضافة كل صفحة إلى سجل المتصفح
+            history.replaceState(null, '', hash);
         }
 
         function openToc() {
@@ -259,10 +274,7 @@
             }, []);
             tocModalContainer.innerHTML = `
                 <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col">
-                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
-                        <h2 class="text-xl font-bold text-white">فهرس الأبواب</h2>
-                        <button id="close-toc-modal" class="p-2 rounded-full hover:bg-red-500" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                    </div>
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">فهرس الأبواب</h2><button id="close-toc-modal" class="p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
                     <div id="toc-list" class="p-4 space-y-2 max-h-96 overflow-y-auto"></div>
                 </div>`;
             const tocList = tocModalContainer.querySelector('#toc-list');
@@ -306,12 +318,51 @@
             sortAndRender();
         }
 
+        function toggleFullScreen() {
+            const elem = document.getElementById('reader-main');
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().catch(err => {
+                    alert(`خطأ في تفعيل وضع ملء الشاشة: ${err.message} (${err.name})`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        async function handleUrlHash() {
+            const hash = window.location.hash;
+            if (!hash.startsWith('#/book/')) return;
+
+            const parts = hash.split('/');
+            if (parts.length < 7) return;
+
+            const bookId = parts[2];
+            const volumeIndex = parts[4];
+            const pageNumber = parts[6];
+
+            if (bookId && volumeIndex !== undefined && pageNumber) {
+                // تأكد من تحميل قائمة الكتب أولاً
+                if (allBooks.length === 0) {
+                    allBooks = await fetchMasterList();
+                }
+                handleBookClick(bookId, volumeIndex, pageNumber);
+            }
+        }
+
         // --- Initial Load ---
         async function initializeApp() {
             showLoader(true);
             allBooks = await fetchMasterList();
             showLoader(false);
-            sortAndRender();
+            
+            // تحقق من الرابط أولاً
+            await handleUrlHash();
+
+            // إذا لم يتم فتح كتاب من الرابط، اعرض القائمة الرئيسية
+            if (readerModalContainer.style.display !== 'flex') {
+                sortAndRender();
+            }
+
             sortSelect.addEventListener('change', sortAndRender);
             searchInput.addEventListener('input', handleSearch);
         }
