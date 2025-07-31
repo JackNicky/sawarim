@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مكتبة صوارم حيدرية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .book-content { line-height: 2.2; }
+        .disabled-btn { opacity: 0.5; cursor: not-allowed; }
+        .loader {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #ca8a04; /* Yellow */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- رأس الصفحة -->
+    <header class="bg-gray-800 shadow-lg p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white">مكتبة صوارم حيدرية</h1>
+            <button id="favorites-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                الكتب المحفوظة
+            </button>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="container mx-auto p-6">
+        <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <div class="relative flex-grow">
+                <input type="text" id="search-input" placeholder="ابحث في عناوين الكتب والمؤلفين..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <span class="absolute left-4 top-3.5 text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg></span>
+            </div>
+            <div class="flex-shrink-0">
+                <select id="sort-select" class="w-full md:w-auto bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <option value="default">الترتيب الافتراضي</option>
+                    <option value="newest">الأحدث أولاً</option>
+                    <option value="alpha-asc">أبجدي: أ - ي</option>
+                    <option value="alpha-desc">أبجدي: ي - أ</option>
+                </select>
+            </div>
+        </div>
+        <div id="books-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
+        <div id="no-results" class="text-center text-gray-500 text-xl mt-10 hidden"><p>لم يتم العثور على نتائج.</p></div>
+    </main>
+
+    <!-- نوافذ منبثقة -->
+    <div id="volumes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4"></div>
+    <div id="toc-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4"></div>
+    <div id="reader-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center"></div>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[70] hidden items-center justify-center"><div class="loader"></div></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- عناصر واجهة المستخدم ---
+        const booksGrid = document.getElementById('books-grid');
+        const searchInput = document.getElementById('search-input');
+        const sortSelect = document.getElementById('sort-select');
+        const noResults = document.getElementById('no-results');
+        const readerModalContainer = document.getElementById('reader-modal');
+        const volumesModalContainer = document.getElementById('volumes-modal');
+        const tocModalContainer = document.getElementById('toc-modal');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // --- متغيرات الحالة ---
+        let currentBookId = null;
+        let currentVolumeIndex = 0;
+        let currentFontSize = 18;
+        let bookPages = [];
+        let currentPageIndex = 0;
+        let allBooks = []; // سيتم ملؤها عند التحميل الأولي
+
+        // --- إدارة الحالة (المفضلة والعلامات المرجعية) ---
+        const getFavorites = () => JSON.parse(localStorage.getItem('sawarim_favorites')) || [];
+        const saveFavorites = (favs) => localStorage.setItem('sawarim_favorites', JSON.stringify(favs));
+        const getPageBookmarks = () => JSON.parse(localStorage.getItem('sawarim_page_bookmarks')) || {};
+        const savePageBookmarks = (bookmarks) => localStorage.setItem('sawarim_page_bookmarks', JSON.stringify(bookmarks));
+
+        // --- جلب البيانات من الملفات الخارجية ---
+        const fetchMasterList = () => fetch('./data/books.json').then(res => res.json()).catch(err => { console.error("Error fetching master list:", err); return []; });
+        const fetchBookDetails = (bookId) => fetch(`./data/book_${bookId}.json`).then(res => res.json()).catch(err => { console.error(`Error fetching book ${bookId}:`, err); return null; });
+
+        function showLoader(show) {
+            loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+
+        function sortAndRender() {
+            let booksToRender = [...allBooks];
+            const sortValue = sortSelect.value;
+            if (sortValue === 'newest') booksToRender.reverse();
+            else if (sortValue === 'alpha-asc') booksToRender.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+            else if (sortValue === 'alpha-desc') booksToRender.sort((a, b) => b.title.localeCompare(a.title, 'ar'));
+            renderBooks(booksToRender);
+        }
+
+        function renderBooks(booksToRender) {
+            booksGrid.innerHTML = '';
+            const favorites = getFavorites();
+            noResults.classList.toggle('hidden', booksToRender.length > 0);
+            booksToRender.forEach(book => {
+                const isFavorite = favorites.includes(book.id);
+                booksGrid.innerHTML += `
+                    <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer group" data-book-id="${book.id}">
+                        <img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover pointer-events-none" onerror="this.onerror=null;this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';">
+                        <div class="p-4 pointer-events-none">
+                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
+                            <p class="text-gray-400 text-sm">${book.author}</p>
+                        </div>
+                        <div class="absolute top-2 right-2"><button class="favorite-btn p-2 rounded-full ${isFavorite ? 'bg-red-500' : 'bg-gray-700 bg-opacity-50'} text-white" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button></div>
+                        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"><span class="text-white text-xl font-bold">اقرأ الآن</span></div>
+                    </div>`;
+            });
+            document.querySelectorAll('.group').forEach(card => card.addEventListener('click', (e) => {
+                if (!e.target.closest('.favorite-btn')) handleBookClick(card.dataset.bookId);
+            }));
+            document.querySelectorAll('.favorite-btn').forEach(btn => btn.addEventListener('click', () => toggleFavorite(btn.dataset.bookId)));
+        }
+        
+        async function handleBookClick(bookId) {
+            const bookInfo = allBooks.find(b => b.id == bookId);
+            if (!bookInfo) return;
+            currentBookId = bookInfo.id;
+            
+            showLoader(true);
+            const bookDetails = await fetchBookDetails(bookId);
+            showLoader(false);
+
+            if (!bookDetails || !bookDetails.volumes) {
+                alert('عذراً، لم يتم العثور على محتوى هذا الكتاب.');
+                return;
+            }
+
+            if (bookDetails.volumes.length > 1) {
+                openVolumeSelector(bookInfo, bookDetails.volumes);
+            } else {
+                openReader(bookInfo, bookDetails.volumes, 0);
+            }
+        }
+
+        function openVolumeSelector(bookInfo, volumes) {
+            volumesModalContainer.innerHTML = `
+                <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 class="text-xl font-bold text-white">اختر جزء من: ${bookInfo.title}</h2>
+                        <button id="close-volumes-modal" class="p-2 rounded-full hover:bg-red-500 transition duration-300" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div id="volumes-list" class="p-4 space-y-2 max-h-96 overflow-y-auto"></div>
+                </div>`;
+            const volumesList = volumesModalContainer.querySelector('#volumes-list');
+            volumes.forEach((volume, index) => {
+                const volumeBtn = document.createElement('button');
+                volumeBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg';
+                volumeBtn.textContent = volume.volumeTitle;
+                volumeBtn.onclick = () => {
+                    volumesModalContainer.style.display = 'none';
+                    openReader(bookInfo, volumes, index);
+                };
+                volumesList.appendChild(volumeBtn);
+            });
+            volumesModalContainer.style.display = 'flex';
+            volumesModalContainer.querySelector('#close-volumes-modal').onclick = () => volumesModalContainer.style.display = 'none';
+        }
+
+        function openReader(bookInfo, volumes, volumeIndex) {
+            currentVolumeIndex = volumeIndex;
+            const volume = volumes[currentVolumeIndex];
+            bookPages = volume.content;
+
+            readerModalContainer.innerHTML = `
+                <div class="bg-gray-800 w-full h-full md:w-4/5 md:h-5/6 lg:w-2/3 md:rounded-lg shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 id="reader-title" class="text-xl font-bold text-white">${bookInfo.title} - ${volume.volumeTitle}</h2>
+                        <div class="flex items-center space-x-2 sm:space-x-4 space-x-reverse">
+                            <button id="toc-btn" class="p-2 rounded-full hover:bg-gray-700" title="الفهرس"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 5h10v10H5V5z" /><path d="M7 7h6v2H7V7zm0 4h6v2H7v-2z" /></svg></button>
+                            <button id="decrease-font" class="p-2 rounded-full hover:bg-gray-700" title="تصغير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg></button>
+                            <span class="text-lg w-6 text-center">A</span>
+                            <button id="increase-font" class="p-2 rounded-full hover:bg-gray-700" title="تكبير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg></button>
+                            <button id="bookmark-page-btn" class="p-2 rounded-full hover:bg-gray-700" title="حفظ علامة مرجعية"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg></button>
+                            <button id="close-modal" class="p-2 rounded-full hover:bg-red-500" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        </div>
+                    </div>
+                    <div id="reader-content" class="p-8 overflow-y-auto flex-grow book-content"></div>
+                    <div class="flex justify-between items-center p-4 border-t border-gray-700">
+                        <button id="next-page-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">التالي</button>
+                        <span id="page-counter" class="text-gray-400"></span>
+                        <button id="prev-page-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">السابق</button>
+                    </div>
+                </div>`;
+            
+            const readerContent = readerModalContainer.querySelector('#reader-content');
+            readerContent.style.fontSize = `${currentFontSize}px`;
+            
+            const bookmarks = getPageBookmarks();
+            const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
+            currentPageIndex = bookmarks[bookmarkKey] || 0;
+            
+            displayCurrentPage();
+            readerModalContainer.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // ربط الأحداث للعناصر الجديدة
+            readerModalContainer.querySelector('#close-modal').onclick = () => { readerModalContainer.style.display = 'none'; document.body.style.overflow = 'auto'; };
+            readerModalContainer.querySelector('#toc-btn').onclick = openToc;
+            readerModalContainer.querySelector('#next-page-btn').onclick = () => { if (currentPageIndex < bookPages.length - 1) { currentPageIndex++; displayCurrentPage(); } };
+            readerModalContainer.querySelector('#prev-page-btn').onclick = () => { if (currentPageIndex > 0) { currentPageIndex--; displayCurrentPage(); } };
+            readerModalContainer.querySelector('#increase-font').onclick = () => { if(currentFontSize < 32) { currentFontSize += 2; readerContent.style.fontSize = `${currentFontSize}px`; } };
+            readerModalContainer.querySelector('#decrease-font').onclick = () => { if(currentFontSize > 12) { currentFontSize -= 2; readerContent.style.fontSize = `${currentFontSize}px`; } };
+            readerModalContainer.querySelector('#bookmark-page-btn').onclick = () => {
+                const bookmarkBtn = readerModalContainer.querySelector('#bookmark-page-btn');
+                const bookmarks = getPageBookmarks();
+                bookmarks[bookmarkKey] = currentPageIndex;
+                savePageBookmarks(bookmarks);
+                bookmarkBtn.classList.add('text-yellow-400');
+                setTimeout(() => { bookmarkBtn.classList.remove('text-yellow-400'); }, 1500);
+            };
+        }
+
+        function displayCurrentPage() {
+            if (bookPages.length === 0) return;
+            const readerContent = readerModalContainer.querySelector('#reader-content');
+            const pageCounter = readerModalContainer.querySelector('#page-counter');
+            const prevPageBtn = readerModalContainer.querySelector('#prev-page-btn');
+            const nextPageBtn = readerModalContainer.querySelector('#next-page-btn');
+
+            const currentPageData = bookPages[currentPageIndex];
+            readerContent.innerHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${currentPageData.chapter || ''}</h4><p>${currentPageData.text.replace(/\n/g, '<br>')}</p>`;
+            readerContent.scrollTop = 0;
+            pageCounter.textContent = `صفحة ${currentPageData.pageNumber}`;
+            prevPageBtn.disabled = currentPageIndex === 0;
+            prevPageBtn.classList.toggle('disabled-btn', currentPageIndex === 0);
+            nextPageBtn.disabled = currentPageIndex === bookPages.length - 1;
+            nextPageBtn.classList.toggle('disabled-btn', currentPageIndex === bookPages.length - 1);
+        }
+
+        function openToc() {
+            const chapters = bookPages.reduce((acc, page, index) => {
+                if (!acc.some(item => item.chapter === page.chapter)) {
+                    acc.push({ chapter: page.chapter, index: index });
+                }
+                return acc;
+            }, []);
+            tocModalContainer.innerHTML = `
+                <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 class="text-xl font-bold text-white">فهرس الأبواب</h2>
+                        <button id="close-toc-modal" class="p-2 rounded-full hover:bg-red-500" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div id="toc-list" class="p-4 space-y-2 max-h-96 overflow-y-auto"></div>
+                </div>`;
+            const tocList = tocModalContainer.querySelector('#toc-list');
+            chapters.forEach(item => {
+                const chapterBtn = document.createElement('button');
+                chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg';
+                chapterBtn.textContent = item.chapter;
+                chapterBtn.onclick = () => {
+                    currentPageIndex = item.index;
+                    displayCurrentPage();
+                    tocModalContainer.style.display = 'none';
+                };
+                tocList.appendChild(chapterBtn);
+            });
+            tocModalContainer.style.display = 'flex';
+            tocModalContainer.querySelector('#close-toc-modal').onclick = () => tocModalContainer.style.display = 'none';
+        }
+        
+        function handleSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            if (!query) {
+                sortAndRender();
+                return;
+            }
+            const filteredBooks = allBooks.filter(book => 
+                book.title.toLowerCase().includes(query) || 
+                book.author.toLowerCase().includes(query)
+            );
+            renderBooks(filteredBooks);
+        }
+
+        function toggleFavorite(bookIdStr) {
+            const bookId = parseInt(bookIdStr);
+            let favorites = getFavorites();
+            if (favorites.includes(bookId)) {
+                favorites = favorites.filter(id => id !== bookId);
+            } else {
+                favorites.push(bookId);
+            }
+            saveFavorites(favorites);
+            sortAndRender();
+        }
+
+        // --- Initial Load ---
+        async function initializeApp() {
+            showLoader(true);
+            allBooks = await fetchMasterList();
+            showLoader(false);
+            sortAndRender();
+            sortSelect.addEventListener('change', sortAndRender);
+            searchInput.addEventListener('input', handleSearch);
+        }
+
+        initializeApp();
+    });
+    </script>
+</body>
+</html>
