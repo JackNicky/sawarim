@@ -113,23 +113,33 @@
         // --- عناصر واجهة المستخدم ---
         const mainView = document.getElementById('main-view');
         const readerView = document.getElementById('reader-view');
-        // ... باقي العناصر
+        const loadingOverlay = document.getElementById('loading-overlay');
         
         let allBooks = [];
-        // ... باقي المتغيرات
+        let currentBookId = null;
+        let currentVolumeIndex = 0;
+        let currentFontSize = 18;
+        let bookPages = [];
+        let currentPageIndex = 0;
 
         // --- جلب البيانات من الملفات الخارجية ---
         const fetchMasterList = () => fetch('./data/books.json').then(res => res.json()).catch(err => { console.error("Error fetching master list:", err); return []; });
         const fetchBookDetails = (bookId) => fetch(`./data/book_${bookId}.json`).then(res => res.json()).catch(err => { console.error(`Error fetching book ${bookId}:`, err); return null; });
 
-        // --- وظائف الواجهة الرئيسية ---
-        // ... (renderBooks, handleBookClick, etc. تبقى كما هي)
+        // --- إدارة الحالة (المفضلة والعلامات المرجعية) ---
+        const getFavorites = () => JSON.parse(localStorage.getItem('sawarim_favorites')) || [];
+        const saveFavorites = (favs) => localStorage.setItem('sawarim_favorites', JSON.stringify(favs));
+        const getPageBookmarks = () => JSON.parse(localStorage.getItem('sawarim_page_bookmarks')) || {};
+        const savePageBookmarks = (bookmarks) => localStorage.setItem('sawarim_page_bookmarks', JSON.stringify(bookmarks));
+
+        function showLoader(show) {
+            loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
 
         function closeReader() {
             readerView.classList.add('hidden');
             mainView.classList.remove('hidden');
             document.body.style.overflow = 'auto';
-            // مسح الرابط عند الإغلاق
             history.pushState("", document.title, window.location.pathname + window.location.search);
         }
 
@@ -138,11 +148,11 @@
             readerView.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
 
+            currentBookId = bookInfo.id;
             currentVolumeIndex = volumeIndex;
             const volume = volumes[currentVolumeIndex];
             bookPages = volume.content;
 
-            // ربط العناصر داخل واجهة القراءة
             const readerBookTitle = readerView.querySelector('#reader-book-title');
             const volumeTitleFooter = readerView.querySelector('#volume-title-footer');
             const totalPagesFooter = readerView.querySelector('#total-pages-footer');
@@ -151,8 +161,10 @@
 
             readerBookTitle.textContent = bookInfo.title;
             volumeTitleFooter.textContent = volume.volumeTitle;
-            totalPagesFooter.textContent = `من ${bookPages.length}`;
-            pageJumpInput.max = bookPages.length;
+            // عرض إجمالي عدد الصفحات الفعلي
+            const lastPage = bookPages.length > 0 ? bookPages[bookPages.length - 1].pageNumber : 0;
+            totalPagesFooter.textContent = `من ${lastPage}`;
+            pageJumpInput.max = lastPage;
             readerContent.style.fontSize = `${currentFontSize}px`;
             
             if (pageNumber) {
@@ -166,7 +178,6 @@
             
             displayCurrentPage();
 
-            // ربط الأحداث لعناصر القارئ
             readerView.querySelector('#close-reader-btn').onclick = closeReader;
             readerView.querySelector('#fullscreen-btn').onclick = toggleFullScreen;
             readerView.querySelector('#toc-btn').onclick = openToc;
@@ -190,7 +201,6 @@
                     currentPageIndex = newIndex;
                     displayCurrentPage();
                 } else {
-                    // إعادة القيمة إلى الصفحة الحالية إذا كان الإدخال غير صالح
                     e.target.value = bookPages[currentPageIndex].pageNumber;
                 }
             });
@@ -228,15 +238,9 @@
             }
         }
         
-        // --- باقي الوظائف (تبقى كما هي) ---
-        // handleUrlHash, initializeApp, openToc, handleSearch, etc.
-        // ... (الكود الكامل موجود في النسخة السابقة، يتم نسخه هنا)
-        function showLoader(show) {
-            loadingOverlay.style.display = show ? 'flex' : 'none';
-        }
-
         function sortAndRender() {
             let booksToRender = [...allBooks];
+            const sortSelect = document.getElementById('sort-select');
             const sortValue = sortSelect.value;
             if (sortValue === 'newest') booksToRender.reverse();
             else if (sortValue === 'alpha-asc') booksToRender.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
@@ -269,7 +273,6 @@
         async function handleBookClick(bookId, volumeIndex = null, pageNumber = null) {
             const bookInfo = allBooks.find(b => b.id == bookId);
             if (!bookInfo) return;
-            currentBookId = bookInfo.id;
             
             showLoader(true);
             const bookDetails = await fetchBookDetails(bookId);
@@ -387,7 +390,6 @@
         }
 
         async function initializeApp() {
-            const loadingOverlay = document.getElementById('loading-overlay');
             const sortSelect = document.getElementById('sort-select');
             const searchInput = document.getElementById('search-input');
             showLoader(true);
@@ -396,9 +398,7 @@
             
             await handleUrlHash();
 
-            if (!readerView.classList.contains('hidden')) {
-                // A book was opened from URL, do nothing more
-            } else {
+            if (readerView.classList.contains('hidden')) {
                 sortAndRender();
             }
 
