@@ -126,6 +126,7 @@
         // --- متغيرات الاستماع الصوتي ---
         let utterance = null;
         let isSpeaking = false;
+        let arabicVoice = null; // سيتم تخزين الصوت العربي هنا
 
         // --- جلب البيانات من الملفات الخارجية ---
         const fetchMasterList = () => fetch('./data/books.json').then(res => res.json()).catch(err => { console.error("Error fetching master list:", err); return []; });
@@ -140,6 +141,23 @@
         function showLoader(show) {
             loadingOverlay.style.display = show ? 'flex' : 'none';
         }
+        
+        // --- وظائف الاستماع الصوتي المحدثة ---
+        function loadAndFindArabicVoice() {
+            // قائمة الأصوات قد لا تكون متاحة مباشرة، لذا ننتظر حدث onvoiceschanged
+            const voices = speechSynthesis.getVoices();
+            arabicVoice = voices.find(voice => voice.lang.startsWith('ar'));
+            if (arabicVoice) {
+                console.log('Arabic voice found:', arabicVoice.name);
+            } else {
+                console.warn('No Arabic voice found in the browser/OS.');
+            }
+        }
+        // استدعاء الوظيفة عند تغير الأصوات المتاحة
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = loadAndFindArabicVoice;
+        }
+
 
         function stopSpeech() {
             if (speechSynthesis.speaking) {
@@ -264,10 +282,23 @@
                 speechSynthesis.cancel();
                 isSpeaking = false;
             } else {
+                // **التعديل الرئيسي هنا**
+                if (!arabicVoice) {
+                    // محاولة أخيرة للحصول على الصوت
+                    loadAndFindArabicVoice();
+                    if (!arabicVoice) {
+                        alert('عذراً، لم يتم العثور على صوت عربي مثبت على جهازك أو متصفحك. قد تحتاج إلى تثبيت حزمة لغة عربية في إعدادات نظام التشغيل.');
+                        return;
+                    }
+                }
+
                 const readerContent = readerView.querySelector('#reader-content');
                 const textToSpeak = readerContent.innerText;
                 utterance = new SpeechSynthesisUtterance(textToSpeak);
-                utterance.lang = 'ar-SA';
+                
+                // تعيين الصوت واللغة بشكل صريح
+                utterance.voice = arabicVoice;
+                utterance.lang = arabicVoice.lang;
                 utterance.rate = 0.9;
                 
                 utterance.onstart = () => {
@@ -460,6 +491,9 @@
             allBooks = await fetchMasterList();
             showLoader(false);
             
+            // تحميل الأصوات المتاحة عند بدء تشغيل التطبيق
+            loadAndFindArabicVoice();
+
             await handleUrlHash();
 
             if (readerView.classList.contains('hidden')) {
