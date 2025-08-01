@@ -77,24 +77,25 @@
     <div id="reader-view" class="hidden h-screen w-screen flex flex-col bg-gray-800">
         <!-- شريط الأدوات العلوي للقارئ -->
         <div class="flex justify-between items-center p-2 border-b border-gray-700 flex-shrink-0">
-            <h2 id="reader-book-title" class="text-lg font-bold text-white mx-4"></h2>
+            <h2 id="reader-book-title" class="text-md sm:text-lg font-bold text-white mx-4 truncate"></h2>
             <div class="flex items-center space-x-1 sm:space-x-2 space-x-reverse">
+                <button id="speech-btn" class="p-2 rounded-full hover:bg-gray-700" title="استماع"><svg id="speech-play-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg><svg id="speech-pause-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
                 <button id="fullscreen-btn" class="p-2 rounded-full hover:bg-gray-700" title="ملء الشاشة"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg></button>
                 <button id="toc-btn" class="p-2 rounded-full hover:bg-gray-700" title="الفهرس"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 5h10v10H5V5z" /><path d="M7 7h6v2H7V7zm0 4h6v2H7v-2z" /></svg></button>
-                <button id="decrease-font" class="p-2 rounded-full hover:bg-gray-700" title="تصغير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg></button>
-                <span class="text-lg w-6 text-center">A</span>
-                <button id="increase-font" class="p-2 rounded-full hover:bg-gray-700" title="تكبير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg></button>
-                <button id="bookmark-page-btn" class="p-2 rounded-full hover:bg-gray-700" title="حفظ علامة مرجعية"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg></button>
-                <button id="close-reader-btn" class="p-2 rounded-full hover:bg-red-500" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <button id="decrease-font" class="p-2 rounded-full hover:bg-gray-700" title="تصغير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg></button>
+                <span class="text-md sm:text-lg w-6 text-center">A</span>
+                <button id="increase-font" class="p-2 rounded-full hover:bg-gray-700" title="تكبير الخط"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg></button>
+                <button id="bookmark-page-btn" class="p-2 rounded-full hover:bg-gray-700" title="حفظ علامة مرجعية"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg></button>
+                <button id="close-reader-btn" class="p-2 rounded-full hover:bg-red-500" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
         </div>
         <!-- محتوى الكتاب -->
-        <div id="reader-content" class="p-8 overflow-y-auto flex-grow book-content"></div>
+        <div id="reader-content" class="p-4 sm:p-8 overflow-y-auto flex-grow book-content"></div>
         <!-- الشريط السفلي للقارئ -->
         <div class="flex justify-between items-center p-2 border-t border-gray-700 flex-shrink-0">
             <button id="prev-page-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">السابق</button>
-            <div class="flex items-center gap-2 text-gray-400 text-sm">
-                <span id="volume-title-footer"></span>
+            <div class="flex items-center gap-2 text-gray-400 text-xs sm:text-sm">
+                <span id="volume-title-footer" class="hidden sm:inline"></span>
                 <span>صفحة</span>
                 <input type="number" id="page-jump-input" min="1">
                 <span id="total-pages-footer"></span>
@@ -122,6 +123,10 @@
         let bookPages = [];
         let currentPageIndex = 0;
 
+        // --- متغيرات الاستماع الصوتي ---
+        let utterance = null;
+        let isSpeaking = false;
+
         // --- جلب البيانات من الملفات الخارجية ---
         const fetchMasterList = () => fetch('./data/books.json').then(res => res.json()).catch(err => { console.error("Error fetching master list:", err); return []; });
         const fetchBookDetails = (bookId) => fetch(`./data/book_${bookId}.json`).then(res => res.json()).catch(err => { console.error(`Error fetching book ${bookId}:`, err); return null; });
@@ -136,7 +141,16 @@
             loadingOverlay.style.display = show ? 'flex' : 'none';
         }
 
+        function stopSpeech() {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            isSpeaking = false;
+            updateSpeechButton();
+        }
+
         function closeReader() {
+            stopSpeech();
             readerView.classList.add('hidden');
             mainView.classList.remove('hidden');
             document.body.style.overflow = 'auto';
@@ -161,7 +175,6 @@
 
             readerBookTitle.textContent = bookInfo.title;
             volumeTitleFooter.textContent = volume.volumeTitle;
-            // عرض إجمالي عدد الصفحات الفعلي
             const lastPage = bookPages.length > 0 ? bookPages[bookPages.length - 1].pageNumber : 0;
             totalPagesFooter.textContent = `من ${lastPage}`;
             pageJumpInput.max = lastPage;
@@ -181,6 +194,7 @@
             readerView.querySelector('#close-reader-btn').onclick = closeReader;
             readerView.querySelector('#fullscreen-btn').onclick = toggleFullScreen;
             readerView.querySelector('#toc-btn').onclick = openToc;
+            readerView.querySelector('#speech-btn').onclick = handleSpeech;
             readerView.querySelector('#next-page-btn').onclick = () => { if (currentPageIndex < bookPages.length - 1) { currentPageIndex++; displayCurrentPage(); } };
             readerView.querySelector('#prev-page-btn').onclick = () => { if (currentPageIndex > 0) { currentPageIndex--; displayCurrentPage(); } };
             readerView.querySelector('#increase-font').onclick = () => { if(currentFontSize < 32) { currentFontSize += 2; readerContent.style.fontSize = `${currentFontSize}px`; } };
@@ -207,6 +221,7 @@
         }
 
         function displayCurrentPage() {
+            stopSpeech();
             if (bookPages.length === 0) return;
             const readerContent = readerView.querySelector('#reader-content');
             const pageJumpInput = readerView.querySelector('#page-jump-input');
@@ -225,6 +240,55 @@
             
             const hash = `#/book/${currentBookId}/volume/${currentVolumeIndex}/page/${currentPageData.pageNumber}`;
             history.replaceState(null, '', hash);
+        }
+
+        function updateSpeechButton() {
+            const playIcon = document.getElementById('speech-play-icon');
+            const pauseIcon = document.getElementById('speech-pause-icon');
+            if (isSpeaking) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        }
+
+        function handleSpeech() {
+            if (!('speechSynthesis' in window)) {
+                alert('عذراً، متصفحك لا يدعم ميزة الاستماع الصوتي.');
+                return;
+            }
+
+            if (isSpeaking) {
+                speechSynthesis.cancel();
+                isSpeaking = false;
+            } else {
+                const readerContent = readerView.querySelector('#reader-content');
+                const textToSpeak = readerContent.innerText;
+                utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = 'ar-SA';
+                utterance.rate = 0.9;
+                
+                utterance.onstart = () => {
+                    isSpeaking = true;
+                    updateSpeechButton();
+                };
+                
+                utterance.onend = () => {
+                    isSpeaking = false;
+                    updateSpeechButton();
+                };
+                
+                utterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance.onerror', event);
+                    isSpeaking = false;
+                    updateSpeechButton();
+                };
+
+                speechSynthesis.speak(utterance);
+            }
+            updateSpeechButton();
         }
 
         function toggleFullScreen() {
