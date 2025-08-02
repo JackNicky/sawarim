@@ -56,6 +56,10 @@
         .tooltip-btn:hover { background-color: #374151; }
         .highlighted-text { background-color: rgba(252, 211, 77, 0.3); }
         .view-btn.active { background-color: #ca8a04; color: white; }
+        .bookmark-tab-btn.active {
+            background-color: #ca8a04;
+            color: white;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -144,6 +148,25 @@
     <div id="volumes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4"></div>
     <div id="toc-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4"></div>
     <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[70] hidden items-center justify-center"><div class="loader"></div></div>
+    
+    <!-- Bookmarks Modal -->
+    <div id="bookmarks-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 w-full max-w-2xl rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white">المحفوظات</h2>
+                <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="flex border-b border-gray-700">
+                <button class="flex-1 p-3 text-center font-semibold bookmark-tab-btn active" data-tab="saved-books-tab">الكتب المحفوظة</button>
+                <button class="flex-1 p-3 text-center font-semibold bookmark-tab-btn" data-tab="page-notes-tab">العلامات المرجعية</button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <div id="saved-books-tab" class="bookmark-tab-content space-y-3"></div>
+                <div id="page-notes-tab" class="bookmark-tab-content hidden space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -157,6 +180,7 @@
         const searchInput = document.getElementById('search-input');
         const gridViewBtn = document.getElementById('grid-view-btn');
         const listViewBtn = document.getElementById('list-view-btn');
+        const showBookmarksBtn = document.getElementById('show-bookmarks-btn');
         
         // --- App State ---
         let allBooks = [];
@@ -173,8 +197,6 @@
         let arabicVoice = null;
         
         // --- Data Fetching ---
-        // This now correctly fetches from external files.
-        // IMPORTANT: This will only work when running from a local web server, not from file://
         const fetchMasterList = () => fetch('./data/books.json')
             .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
             .catch(err => { console.error("Error fetching master list:", err); return []; });
@@ -189,8 +211,8 @@
         };
 
         // --- Local Storage Management ---
-        const getBookmarks = () => JSON.parse(localStorage.getItem('sawarim_bookmarks_v2')) || { savedBooks: [], pageProgress: {}, highlights: [] };
-        const saveBookmarks = (bookmarks) => localStorage.setItem('sawarim_bookmarks_v2', JSON.stringify(bookmarks));
+        const getBookmarks = () => JSON.parse(localStorage.getItem('sawarim_bookmarks_v3')) || { savedBooks: [], pageProgress: {}, pageNotes: [] };
+        const saveBookmarks = (bookmarks) => localStorage.setItem('sawarim_bookmarks_v3', JSON.stringify(bookmarks));
         
         // --- Speech Synthesis Functions ---
         function loadAndFindArabicVoice() {
@@ -250,7 +272,7 @@
             
             const bookmarks = getBookmarks();
             const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
-            let targetPageNum = pageNumber ? parseInt(pageNumber, 10) : (bookmarks.pageProgress[bookmarkKey] || 1);
+            let targetPageNum = pageNumber ? parseInt(pageNumber, 10) : (bookmarks.pageProgress[bookmarkKey] || bookPages[0]?.pageNumber || 1);
             
             currentPageIndex = bookPages.findIndex(p => p.pageNumber == targetPageNum);
             if (currentPageIndex === -1) currentPageIndex = 0;
@@ -268,14 +290,15 @@
             readerView.querySelector('#prev-page-btn').onclick = () => { if (currentPageIndex > 0) { currentPageIndex--; displayCurrentPage(); } };
             readerView.querySelector('#increase-font').onclick = () => { if(currentFontSize < 32) { currentFontSize += 2; document.getElementById('reader-content-primary').style.fontSize = `${currentFontSize}px`; } };
             readerView.querySelector('#decrease-font').onclick = () => { if(currentFontSize > 12) { currentFontSize -= 2; document.getElementById('reader-content-primary').style.fontSize = `${currentFontSize}px`; } };
-            
+            readerView.querySelector('#bookmark-page-btn').onclick = () => showBookmarkNoteModal(bookPages[currentPageIndex]);
+
             readerView.querySelector('#page-jump-input').addEventListener('change', (e) => {
                 const targetPage = parseInt(e.target.value, 10);
                 const newIndex = bookPages.findIndex(p => p.pageNumber === targetPage);
                 if (newIndex !== -1) {
                     currentPageIndex = newIndex;
                     displayCurrentPage();
-                } else {
+                } else if (bookPages[currentPageIndex]) {
                     e.target.value = bookPages[currentPageIndex].pageNumber;
                 }
             });
@@ -293,7 +316,7 @@
 
         function displayCurrentPage() {
             stopSpeech();
-            if (bookPages.length === 0) return;
+            if (!bookPages || bookPages.length === 0) return;
 
             const readerContent = readerView.querySelector('#reader-content-primary');
             const pageJumpInput = readerView.querySelector('#page-jump-input');
@@ -302,6 +325,8 @@
             const nextPageBtn = readerView.querySelector('#next-page-btn');
 
             const currentPageData = bookPages[currentPageIndex];
+            if (!currentPageData) return;
+
             readerContent.innerHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${currentPageData.chapter || ''}</h4><p>${currentPageData.text.replace(/\n/g, '<br>')}</p>`;
             readerContent.scrollTop = 0;
             pageJumpInput.value = currentPageData.pageNumber;
@@ -317,7 +342,6 @@
             const hash = `#/book/${currentBookId}/volume/${currentVolumeIndex}/page/${currentPageData.pageNumber}`;
             history.replaceState(null, '', hash);
             
-            // Save progress
             let bookmarks = getBookmarks();
             const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
             bookmarks.pageProgress[bookmarkKey] = currentPageData.pageNumber;
@@ -364,13 +388,13 @@
         }
         
         // --- Main View Functions ---
-        function sortAndRender() {
-            let booksToRender = [...allBooks];
+        function sortAndRender(booksToRender = allBooks) {
             const sortValue = sortSelect.value;
-            if (sortValue === 'newest') booksToRender.reverse(); // Assuming default is oldest first
-            else if (sortValue === 'alpha-asc') booksToRender.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
-            else if (sortValue === 'alpha-desc') booksToRender.sort((a, b) => b.title.localeCompare(a.title, 'ar'));
-            renderBooks(booksToRender);
+            let sortedBooks = [...booksToRender];
+            if (sortValue === 'newest') sortedBooks.reverse();
+            else if (sortValue === 'alpha-asc') sortedBooks.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+            else if (sortValue === 'alpha-desc') sortedBooks.sort((a, b) => b.title.localeCompare(a.title, 'ar'));
+            renderBooks(sortedBooks);
         }
 
         function renderBooks(booksToRender) {
@@ -427,7 +451,7 @@
                 bookmarks.savedBooks.push(bookId);
             }
             saveBookmarks(bookmarks);
-            sortAndRender(); // Re-render to update the heart icon
+            sortAndRender();
         }
 
         async function handleBookClick(bookId, volumeIndex = null, pageNumber = null) {
@@ -514,6 +538,151 @@
             renderBooks(filteredBooks);
         }
 
+        // --- Bookmarking Functions ---
+        function showBookmarkNoteModal(pageData) {
+            const modalContainer = document.getElementById('bookmark-note-modal');
+            modalContainer.innerHTML = `
+                <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
+                    <div class="p-4 border-b border-gray-700">
+                        <h2 class="text-xl font-bold text-white">إضافة ملاحظة للعلامة المرجعية</h2>
+                        <p class="text-sm text-gray-400">صفحة ${pageData.pageNumber} - ${pageData.chapter || 'بلا عنوان'}</p>
+                    </div>
+                    <div class="p-4">
+                        <textarea id="bookmark-note-input" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white" rows="4" placeholder="اكتب ملاحظتك هنا..."></textarea>
+                    </div>
+                    <div class="flex justify-end p-4 border-t border-gray-700 space-x-2 space-x-reverse">
+                        <button id="cancel-bookmark-note" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">إلغاء</button>
+                        <button id="save-bookmark-note" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">حفظ</button>
+                    </div>
+                </div>
+            `;
+            modalContainer.style.display = 'flex';
+
+            document.getElementById('save-bookmark-note').onclick = () => {
+                const note = document.getElementById('bookmark-note-input').value;
+                let bookmarks = getBookmarks();
+                bookmarks.pageNotes.push({
+                    id: Date.now(),
+                    bookId: currentBookId,
+                    volumeIndex: currentVolumeIndex,
+                    pageNumber: pageData.pageNumber,
+                    chapter: pageData.chapter,
+                    note: note,
+                    date: new Date().toISOString()
+                });
+                saveBookmarks(bookmarks);
+                modalContainer.style.display = 'none';
+                alert('تم حفظ العلامة المرجعية بنجاح!');
+            };
+
+            document.getElementById('cancel-bookmark-note').onclick = () => {
+                modalContainer.style.display = 'none';
+            };
+        }
+
+        function showBookmarksModal() {
+            const modal = document.getElementById('bookmarks-modal');
+            modal.style.display = 'flex';
+
+            const renderSavedBooks = () => {
+                const bookmarks = getBookmarks();
+                const container = document.getElementById('saved-books-tab');
+                container.innerHTML = '';
+                if (bookmarks.savedBooks.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-center">لم تقم بحفظ أي كتب بعد.</p>';
+                    return;
+                }
+                bookmarks.savedBooks.forEach(bookId => {
+                    const book = allBooks.find(b => b.id === bookId);
+                    if (book) {
+                        const elem = document.createElement('div');
+                        elem.className = 'bg-gray-700 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-600';
+                        elem.innerHTML = `
+                            <div>
+                                <h4 class="font-bold text-white">${book.title}</h4>
+                                <p class="text-sm text-gray-400">${book.author}</p>
+                            </div>
+                            <button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إزالة</button>
+                        `;
+                        elem.onclick = (e) => {
+                            if (!e.target.closest('.remove-saved-book-btn')) {
+                                modal.style.display = 'none';
+                                handleBookClick(bookId);
+                            }
+                        };
+                        container.appendChild(elem);
+                    }
+                });
+                 container.querySelectorAll('.remove-saved-book-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        let bookmarks = getBookmarks();
+                        bookmarks.savedBooks = bookmarks.savedBooks.filter(id => id != btn.dataset.id);
+                        saveBookmarks(bookmarks);
+                        renderSavedBooks();
+                        sortAndRender(); // Update main view
+                    };
+                });
+            };
+
+            const renderPageNotes = () => {
+                const bookmarks = getBookmarks();
+                const container = document.getElementById('page-notes-tab');
+                container.innerHTML = '';
+                if (bookmarks.pageNotes.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-center">لم تقم بحفظ أي علامات مرجعية للصفحات بعد.</p>';
+                    return;
+                }
+                bookmarks.pageNotes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(note => {
+                    const book = allBooks.find(b => b.id === note.bookId);
+                    if (book) {
+                         const elem = document.createElement('div');
+                        elem.className = 'bg-gray-700 p-3 rounded-lg cursor-pointer hover:bg-gray-600';
+                        elem.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-bold text-white">${book.title}</h4>
+                                    <p class="text-sm text-yellow-400">صفحة ${note.pageNumber} - ${note.chapter || ''}</p>
+                                    <p class="text-gray-300 mt-2 whitespace-pre-wrap">${note.note || '<i>لا توجد ملاحظة</i>'}</p>
+                                </div>
+                                <button class="text-red-500 hover:text-red-400 remove-page-note-btn flex-shrink-0 ml-4" data-id="${note.id}">إزالة</button>
+                            </div>
+                        `;
+                        elem.onclick = (e) => {
+                             if (!e.target.closest('.remove-page-note-btn')) {
+                                modal.style.display = 'none';
+                                handleBookClick(note.bookId, note.volumeIndex, note.pageNumber);
+                            }
+                        };
+                        container.appendChild(elem);
+                    }
+                });
+
+                container.querySelectorAll('.remove-page-note-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        let bookmarks = getBookmarks();
+                        bookmarks.pageNotes = bookmarks.pageNotes.filter(p => p.id != btn.dataset.id);
+                        saveBookmarks(bookmarks);
+                        renderPageNotes();
+                    };
+                });
+            };
+
+            renderSavedBooks();
+            renderPageNotes();
+
+            modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
+            modal.querySelectorAll('.bookmark-tab-btn').forEach(btn => {
+                btn.onclick = () => {
+                    modal.querySelector('.bookmark-tab-btn.active').classList.remove('active');
+                    btn.classList.add('active');
+                    modal.querySelector('.bookmark-tab-content:not(.hidden)').classList.add('hidden');
+                    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+                };
+            });
+        }
+
         // --- App Initialization ---
         async function handleUrlHash() {
             const hash = window.location.hash;
@@ -546,7 +715,6 @@
             
             loadAndFindArabicVoice();
             
-            // Only render main view if not jumping to a book from URL
             if (!window.location.hash.startsWith('#/book/')) {
                 sortAndRender();
             }
@@ -554,8 +722,9 @@
             await handleUrlHash();
 
             // Event Listeners
-            sortSelect.addEventListener('change', sortAndRender);
+            sortSelect.addEventListener('change', () => sortAndRender());
             searchInput.addEventListener('input', handleSearch);
+            showBookmarksBtn.addEventListener('click', showBookmarksModal);
             gridViewBtn.addEventListener('click', () => {
                 currentView = 'grid';
                 gridViewBtn.classList.add('active');
