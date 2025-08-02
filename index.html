@@ -84,7 +84,7 @@
         <main class="container mx-auto p-6">
             <div class="flex flex-col md:flex-row gap-4 mb-6">
                 <div class="relative flex-grow">
-                    <input type="text" id="search-input" placeholder="ابحث..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <textarea id="search-input" placeholder="ابحث..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="1" style="resize: none;"></textarea>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
                     <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
@@ -594,18 +594,23 @@
 
             showLoader(true);
             
-            // Use setTimeout to allow the loader to render before the heavy search operation
             setTimeout(() => {
                 const results = [];
-                const regex = new RegExp(query, 'gi');
                 
+                // 1. Split the query by any whitespace.
+                const queryParts = query.split(/\s+/);
+                // 2. Escape each part to treat special characters literally.
+                const escapedParts = queryParts.map(part => part.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
+                // 3. Join them with a flexible whitespace matcher. This allows matching across newlines and multiple spaces.
+                const flexibleQuery = escapedParts.join('\\s+');
+                const regex = new RegExp(flexibleQuery, 'gi');
+
                 searchableContent.forEach(item => {
-                    if (item.text.toLowerCase().includes(query.toLowerCase())) {
-                        let match;
-                        while ((match = regex.exec(item.text)) !== null) {
-                            const snippet = createSnippet(item.text, match.index, query.length);
-                            results.push({ ...item, snippet });
-                        }
+                    let match;
+                    // Use the regex to find all matches in the item's text
+                    while ((match = regex.exec(item.text)) !== null) {
+                        const snippet = createSnippet(item.text, match.index, match[0].length);
+                        results.push({ ...item, snippet });
                     }
                 });
 
@@ -614,20 +619,21 @@
             }, 50);
         }
         
-        function createSnippet(text, index, queryLength, contextLength = 50) {
+        function createSnippet(text, index, matchLength, contextLength = 50) {
             const start = Math.max(0, index - contextLength);
-            const end = Math.min(text.length, index + queryLength + contextLength);
+            const end = Math.min(text.length, index + matchLength + contextLength);
             let snippet = text.substring(start, end);
             
-            // Add ellipses if the snippet is truncated
+            const matchedText = text.substring(index, index + matchLength);
+            
             if (start > 0) snippet = "..." + snippet;
             if (end < text.length) snippet = snippet + "...";
 
-            // Highlight the query
-            const regex = new RegExp(queryLength > 0 ? text.substring(index, index + queryLength) : '', 'gi');
-            snippet = snippet.replace(regex, `<mark>${text.substring(index, index + queryLength)}</mark>`);
+            // Replace the matched text within the snippet with a highlighted version.
+            // This is safer than creating a new regex from potentially complex matched text.
+            const highlightedSnippet = snippet.replace(matchedText, `<mark>${matchedText}</mark>`);
 
-            return snippet;
+            return highlightedSnippet;
         }
 
         function displayAdvancedSearchResults(results, query) {
@@ -663,7 +669,7 @@
                 resultEl.innerHTML = `
                     <h3 class="font-bold text-yellow-400">${res.bookTitle}</h3>
                     <p class="text-sm text-gray-400 mb-2">${res.volumeTitle} - صفحة ${res.pageNumber}</p>
-                    <p class="text-gray-300">...${res.snippet}...</p>
+                    <p class="text-gray-300">${res.snippet}</p>
                 `;
                 resultEl.onclick = () => handleBookClick(res.bookId, res.volumeIndex, res.pageNumber);
                 resultsContainer.appendChild(resultEl);
@@ -898,10 +904,19 @@
                     handleSimpleSearch();
                 }
             });
-            searchInput.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') {
+            // Auto-resize search textarea and handle Enter key
+            searchInput.addEventListener('input', () => {
+                searchInput.style.height = 'auto';
+                searchInput.style.height = (searchInput.scrollHeight) + 'px';
+            });
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); // Prevent new line on Enter
                     searchBtn.click();
-                } else if (!searchContentCheckbox.checked && searchInput.value.trim() === '') {
+                }
+            });
+            searchInput.addEventListener('keyup', (e) => {
+                if (!searchContentCheckbox.checked && searchInput.value.trim() === '') {
                     handleSimpleSearch();
                 }
             });
