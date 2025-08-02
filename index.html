@@ -498,33 +498,48 @@
         
         function openToc() {
             const tocModalContainer = document.getElementById('toc-modal');
-            const chapters = bookPages.reduce((acc, page, index) => {
-                if (page.chapter && !acc.some(item => item.chapter === page.chapter)) {
-                    acc.push({ chapter: page.chapter, index: index });
-                }
-                return acc;
-            }, []);
+            
+            // Use a Map to ensure unique chapters and store their first page index.
+            // This is more efficient and robust than the previous reduce method.
+            const chapterMap = new Map();
+            if (bookPages && Array.isArray(bookPages)) {
+                bookPages.forEach((page, index) => {
+                    const chapterTitle = page.chapter?.trim();
+                    // If the chapter has a title and we haven't seen it before, add it to the map.
+                    if (chapterTitle && !chapterMap.has(chapterTitle)) {
+                        chapterMap.set(chapterTitle, index);
+                    }
+                });
+            }
+
             tocModalContainer.innerHTML = `
-                <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col">
-                    <div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">فهرس الأبواب</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-                    <div class="p-4 space-y-2 max-h-96 overflow-y-auto"></div>
+                <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 class="text-xl font-bold text-white">فهرس الأبواب</h2>
+                        <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div class="p-4 space-y-2 overflow-y-auto"></div>
                 </div>`;
-            const tocList = tocModalContainer.querySelector('div:last-child');
-            if (chapters.length > 0) {
-                chapters.forEach(item => {
+                
+            const tocList = tocModalContainer.querySelector('.overflow-y-auto');
+            
+            if (chapterMap.size > 0) {
+                // Iterate over the map entries to create the buttons.
+                for (const [chapter, index] of chapterMap.entries()) {
                     const chapterBtn = document.createElement('button');
-                    chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg';
-                    chapterBtn.textContent = item.chapter;
+                    chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg transition-colors duration-200';
+                    chapterBtn.textContent = chapter;
                     chapterBtn.onclick = () => {
-                        currentPageIndex = item.index;
+                        currentPageIndex = index;
                         displayCurrentPage();
                         tocModalContainer.style.display = 'none';
                     };
                     tocList.appendChild(chapterBtn);
-                });
+                }
             } else {
-                tocList.innerHTML = '<p class="text-gray-400">لا يوجد فهرس لهذا الجزء.</p>';
+                tocList.innerHTML = '<p class="text-gray-400 text-center">لا يوجد فهرس لهذا الجزء.</p>';
             }
+            
             tocModalContainer.style.display = 'flex';
             tocModalContainer.querySelector('.close-modal-btn').onclick = () => tocModalContainer.style.display = 'none';
         }
@@ -540,6 +555,7 @@
 
         // --- Bookmarking Functions ---
         function showBookmarkNoteModal(pageData) {
+            if (!pageData) return; // Add a guard clause
             const modalContainer = document.getElementById('bookmark-note-modal');
             modalContainer.innerHTML = `
                 <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
