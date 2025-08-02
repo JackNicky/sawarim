@@ -154,6 +154,12 @@
         const readerView = document.getElementById('reader-view');
         const loadingOverlay = document.getElementById('loading-overlay');
         const textSelectionTooltip = document.getElementById('text-selection-tooltip');
+        const booksContainer = document.getElementById('books-container');
+        const noResults = document.getElementById('no-results');
+        const sortSelect = document.getElementById('sort-select');
+        const searchInput = document.getElementById('search-input');
+        const gridViewBtn = document.getElementById('grid-view-btn');
+        const listViewBtn = document.getElementById('list-view-btn');
         
         let allBooks = [];
         let currentBookId = null;
@@ -185,63 +191,165 @@
             speechSynthesis.onvoiceschanged = loadAndFindArabicVoice;
         }
 
-        // --- وظائف القارئ ---
-        function closeReader() {
-            // ... (الكود الكامل موجود أدناه)
+        function stopSpeech() {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            isSpeaking = false;
+            updateSpeechButton();
         }
 
-        function openReader(bookInfo, volumes, volumeIndex, pageNumber = null) {
-            // ... (الكود الكامل موجود أدناه)
-        }
-
-        function displayCurrentPage() {
-            // ... (الكود الكامل موجود أدناه)
-        }
-
-        // --- وظائف العلامات المرجعية الجديدة ---
-        function showBookmarkNoteModal(pageData) {
-            // ... (الكود الكامل موجود أدناه)
-        }
-
-        function savePageBookmark(note) {
-            // ... (الكود الكامل موجود أدناه)
-        }
-
-        function handleTextSelection() {
-            const selection = window.getSelection();
-            const readerContent = document.getElementById('reader-content-primary');
-            if (!selection.isCollapsed && readerContent.contains(selection.anchorNode)) {
-                const range = selection.getRangeAt(0);
-                const rect = range.getBoundingClientRect();
-                textSelectionTooltip.style.top = `${readerContent.scrollTop + rect.top - 50}px`;
-                textSelectionTooltip.style.left = `${rect.left + (rect.width / 2) - 25}px`;
-                textSelectionTooltip.style.display = 'block';
+        function updateSpeechButton() {
+            const playIcon = readerView.querySelector('#speech-play-icon');
+            const pauseIcon = readerView.querySelector('#speech-pause-icon');
+            if(!playIcon || !pauseIcon) return;
+            if (isSpeaking) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
             } else {
-                textSelectionTooltip.style.display = 'none';
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
             }
         }
 
-        function saveHighlight() {
-            // ... (الكود الكامل موجود أدناه)
+        // --- وظائف القارئ ---
+        function closeReader() {
+            stopSpeech();
+            readerView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            document.body.style.overflow = 'auto';
+            history.pushState("", document.title, window.location.pathname + window.location.search);
         }
 
-        // --- التشغيل الأولي ---
-        async function initializeApp() {
-            // ... (الكود الكامل موجود أدناه)
+        function openReader(bookInfo, volumes, volumeIndex, pageNumber = null) {
+            mainView.classList.add('hidden');
+            readerView.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            currentBookId = bookInfo.id;
+            currentVolumeIndex = volumeIndex;
+            const volume = volumes[currentVolumeIndex];
+            bookPages = volume.content;
+
+            const readerBookTitle = readerView.querySelector('#reader-book-title');
+            const volumeTitleFooter = readerView.querySelector('#volume-title-footer');
+            const totalPagesFooter = readerView.querySelector('#total-pages-footer');
+            const pageJumpInput = readerView.querySelector('#page-jump-input');
+            const readerContent = readerView.querySelector('#reader-content-primary');
+
+            readerBookTitle.textContent = bookInfo.title;
+            volumeTitleFooter.textContent = volume.volumeTitle;
+            const lastPage = bookPages.length > 0 ? bookPages[bookPages.length - 1].pageNumber : 0;
+            totalPagesFooter.textContent = `من ${lastPage}`;
+            pageJumpInput.max = lastPage;
+            readerContent.style.fontSize = `${currentFontSize}px`;
+            
+            if (pageNumber) {
+                currentPageIndex = bookPages.findIndex(p => p.pageNumber == pageNumber);
+                if (currentPageIndex === -1) currentPageIndex = 0;
+            } else {
+                const bookmarks = getBookmarks();
+                const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
+                currentPageIndex = bookmarks[bookmarkKey] || 0;
+            }
+            
+            displayCurrentPage();
+
+            readerView.querySelector('#close-reader-btn').onclick = closeReader;
+            readerView.querySelector('#fullscreen-btn').onclick = toggleFullScreen;
+            readerView.querySelector('#toc-btn').onclick = openToc;
+            readerView.querySelector('#speech-btn').onclick = handleSpeech;
+            readerView.querySelector('#next-page-btn').onclick = () => { if (currentPageIndex < bookPages.length - 1) { currentPageIndex++; displayCurrentPage(); } };
+            readerView.querySelector('#prev-page-btn').onclick = () => { if (currentPageIndex > 0) { currentPageIndex--; displayCurrentPage(); } };
+            readerView.querySelector('#increase-font').onclick = () => { if(currentFontSize < 32) { currentFontSize += 2; readerContent.style.fontSize = `${currentFontSize}px`; } };
+            readerView.querySelector('#decrease-font').onclick = () => { if(currentFontSize > 12) { currentFontSize -= 2; readerContent.style.fontSize = `${currentFontSize}px`; } };
+            readerView.querySelector('#bookmark-page-btn').onclick = () => showBookmarkNoteModal(bookPages[currentPageIndex]);
+            pageJumpInput.addEventListener('change', (e) => {
+                const targetPage = parseInt(e.target.value, 10);
+                const newIndex = bookPages.findIndex(p => p.pageNumber === targetPage);
+                if (newIndex !== -1) {
+                    currentPageIndex = newIndex;
+                    displayCurrentPage();
+                } else {
+                    e.target.value = bookPages[currentPageIndex].pageNumber;
+                }
+            });
+            readerView.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const readerContentPrimary = document.getElementById('reader-content-primary');
+                    const readerContentSecondary = document.getElementById('reader-content-secondary');
+                    readerContentPrimary.className = readerContentPrimary.className.replace(/theme-\w+/g, '') + ` ${btn.dataset.theme}`;
+                    readerContentSecondary.className = readerContentSecondary.className.replace(/theme-\w+/g, '') + ` ${btn.dataset.theme}`;
+                }
+            });
         }
 
-        // --- الكود الكامل ---
-        const booksContainer = document.getElementById('books-container');
-        const noResults = document.getElementById('no-results');
-        const sortSelect = document.getElementById('sort-select');
-        const searchInput = document.getElementById('search-input');
-        const gridViewBtn = document.getElementById('grid-view-btn');
-        const listViewBtn = document.getElementById('list-view-btn');
+        function displayCurrentPage() {
+            stopSpeech();
+            if (bookPages.length === 0) return;
+            const readerContent = readerView.querySelector('#reader-content-primary');
+            const pageJumpInput = readerView.querySelector('#page-jump-input');
+            const prevPageBtn = readerView.querySelector('#prev-page-btn');
+            const nextPageBtn = readerView.querySelector('#next-page-btn');
 
-        function showLoader(show) {
-            loadingOverlay.style.display = show ? 'flex' : 'none';
+            const currentPageData = bookPages[currentPageIndex];
+            readerContent.innerHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${currentPageData.chapter || ''}</h4><p>${currentPageData.text.replace(/\n/g, '<br>')}</p>`;
+            readerContent.scrollTop = 0;
+            pageJumpInput.value = currentPageData.pageNumber;
+            
+            prevPageBtn.disabled = currentPageIndex === 0;
+            prevPageBtn.classList.toggle('disabled-btn', currentPageIndex === 0);
+            nextPageBtn.disabled = currentPageIndex === bookPages.length - 1;
+            nextPageBtn.classList.toggle('disabled-btn', currentPageIndex === bookPages.length - 1);
+            
+            const hash = `#/book/${currentBookId}/volume/${currentVolumeIndex}/page/${currentPageData.pageNumber}`;
+            history.replaceState(null, '', hash);
         }
 
+        function handleSpeech() {
+            if (!('speechSynthesis' in window)) {
+                alert('عذراً، متصفحك لا يدعم ميزة الاستماع الصوتي.');
+                return;
+            }
+
+            if (isSpeaking) {
+                speechSynthesis.cancel();
+                isSpeaking = false;
+            } else {
+                if (!arabicVoice) {
+                    loadAndFindArabicVoice();
+                    if (!arabicVoice) {
+                        alert('عذراً، لم يتم العثور على صوت عربي مثبت على جهازك أو متصفحك.');
+                        return;
+                    }
+                }
+
+                const readerContent = readerView.querySelector('#reader-content-primary');
+                const textToSpeak = readerContent.innerText;
+                utterance = new SpeechSynthesisUtterance(textToSpeak);
+                
+                utterance.voice = arabicVoice;
+                utterance.lang = arabicVoice.lang;
+                utterance.rate = 0.9;
+                
+                utterance.onstart = () => { isSpeaking = true; updateSpeechButton(); };
+                utterance.onend = () => { isSpeaking = false; updateSpeechButton(); };
+                utterance.onerror = (event) => { console.error('SpeechSynthesisUtterance.onerror', event); isSpeaking = false; updateSpeechButton(); };
+
+                speechSynthesis.speak(utterance);
+            }
+            updateSpeechButton();
+        }
+
+        function toggleFullScreen() {
+            const elem = document.getElementById('reader-view');
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().catch(err => alert(`خطأ في تفعيل وضع ملء الشاشة: ${err.message}`));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
         function sortAndRender() {
             let booksToRender = [...allBooks];
             const sortValue = sortSelect.value;
@@ -348,6 +456,95 @@
             });
         }
         
+        function openToc() {
+            const tocModalContainer = document.getElementById('toc-modal');
+            const chapters = bookPages.reduce((acc, page, index) => {
+                if (!acc.some(item => item.chapter === page.chapter)) {
+                    acc.push({ chapter: page.chapter, index: index });
+                }
+                return acc;
+            }, []);
+            tocModalContainer.innerHTML = `
+                <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">فهرس الأبواب</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+                    <div class="p-4 space-y-2 max-h-96 overflow-y-auto"></div>
+                </div>`;
+            const tocList = tocModalContainer.querySelector('div:last-child');
+            chapters.forEach(item => {
+                const chapterBtn = document.createElement('button');
+                chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg';
+                chapterBtn.textContent = item.chapter;
+                chapterBtn.onclick = () => {
+                    currentPageIndex = item.index;
+                    displayCurrentPage();
+                    tocModalContainer.style.display = 'none';
+                };
+                tocList.appendChild(chapterBtn);
+            });
+            tocModalContainer.style.display = 'flex';
+            tocModalContainer.querySelector('.close-modal-btn').onclick = () => tocModalContainer.style.display = 'none';
+        }
+        
+        function handleSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            if (!query) {
+                sortAndRender();
+                return;
+            }
+            const filteredBooks = allBooks.filter(book => 
+                book.title.toLowerCase().includes(query) || 
+                book.author.toLowerCase().includes(query)
+            );
+            renderBooks(filteredBooks);
+        }
+
+        async function handleUrlHash() {
+            const hash = window.location.hash;
+            if (!hash.startsWith('#/book/')) return;
+
+            const parts = hash.split('/');
+            if (parts.length < 7) return;
+
+            const bookId = parts[2];
+            const volumeIndex = parts[4];
+            const pageNumber = parts[6];
+
+            if (bookId && volumeIndex !== undefined && pageNumber) {
+                if (allBooks.length === 0) {
+                    allBooks = await fetchMasterList();
+                }
+                handleBookClick(bookId, volumeIndex, pageNumber);
+            }
+        }
+
+        async function initializeApp() {
+            showLoader(true);
+            allBooks = await fetchMasterList();
+            showLoader(false);
+            
+            loadAndFindArabicVoice();
+            await handleUrlHash();
+
+            if (readerView.classList.contains('hidden')) {
+                sortAndRender();
+            }
+
+            sortSelect.addEventListener('change', sortAndRender);
+            searchInput.addEventListener('input', handleSearch);
+            gridViewBtn.addEventListener('click', () => {
+                currentView = 'grid';
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+                sortAndRender();
+            });
+            listViewBtn.addEventListener('click', () => {
+                currentView = 'list';
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+                sortAndRender();
+            });
+        }
+
         initializeApp();
     });
     </script>
