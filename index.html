@@ -60,6 +60,12 @@
             background-color: #ca8a04;
             color: white;
         }
+        .search-results-view mark {
+            background-color: #facc15;
+            color: #1f2937;
+            padding: 2px 1px;
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -76,15 +82,29 @@
         </header>
 
         <main class="container mx-auto p-6">
-            <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
                 <div class="relative flex-grow">
-                    <input type="text" id="search-input" placeholder="ابحث في عناوين الكتب والمؤلفين..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <input type="text" id="search-input" placeholder="ابحث..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
+                    <label class="flex items-center gap-2 cursor-pointer text-gray-300">
+                        <input type="checkbox" id="search-content-checkbox" class="form-checkbox bg-gray-700 border-gray-600 text-yellow-500 h-5 w-5 rounded focus:ring-yellow-500">
+                        <span>بحث في المحتوى</span>
+                    </label>
+                    <div id="indexing-status" class="text-xs text-gray-500 hidden">جاري فهرسة الكتب...</div>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 mb-8 items-center">
+                 <div class="flex-grow flex items-center gap-2">
+                    <span class="text-gray-400">عرض:</span>
                     <div class="flex-shrink-0 bg-gray-800 border border-gray-700 rounded-lg p-1">
                         <button id="grid-view-btn" class="view-btn p-2 rounded-md active" title="عرض شبكي"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM11 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z" /></svg></button>
                         <button id="list-view-btn" class="view-btn p-2 rounded-md" title="عرض قائمة"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg></button>
                     </div>
+                </div>
+                 <div class="flex-grow flex items-center gap-2">
+                    <span class="text-gray-400">ترتيب حسب:</span>
                     <select id="sort-select" class="w-full md:w-auto bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
                         <option value="default">الترتيب الافتراضي</option>
                         <option value="newest">الأحدث أولاً</option>
@@ -93,8 +113,11 @@
                     </select>
                 </div>
             </div>
-            <div id="books-container"></div>
-            <div id="no-results" class="text-center text-gray-500 text-xl mt-10 hidden"><p>لم يتم العثور على نتائج.</p></div>
+            <div id="books-container-wrapper">
+                <div id="books-container"></div>
+                <div id="no-results" class="text-center text-gray-500 text-xl mt-10 hidden"><p>لم يتم العثور على نتائج.</p></div>
+            </div>
+            <div id="search-results-view" class="hidden"></div>
         </main>
     </div>
 
@@ -102,7 +125,7 @@
     <div id="reader-view" class="hidden h-screen w-screen flex flex-col bg-gray-800">
         <!-- Reader Top Toolbar -->
         <div class="flex justify-between items-center p-2 border-b border-gray-700 flex-shrink-0">
-             <div class="flex items-center">
+             <div class="flex items-center min-w-0">
                 <button id="close-reader-btn" class="p-2 rounded-full hover:bg-red-500" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                 <h2 id="reader-book-title" class="text-md sm:text-lg font-bold text-white mx-4 truncate"></h2>
             </div>
@@ -174,16 +197,23 @@
         const mainView = document.getElementById('main-view');
         const readerView = document.getElementById('reader-view');
         const loadingOverlay = document.getElementById('loading-overlay');
+        const booksContainerWrapper = document.getElementById('books-container-wrapper');
         const booksContainer = document.getElementById('books-container');
         const noResults = document.getElementById('no-results');
         const sortSelect = document.getElementById('sort-select');
         const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const searchContentCheckbox = document.getElementById('search-content-checkbox');
+        const indexingStatus = document.getElementById('indexing-status');
+        const searchResultsView = document.getElementById('search-results-view');
         const gridViewBtn = document.getElementById('grid-view-btn');
         const listViewBtn = document.getElementById('list-view-btn');
         const showBookmarksBtn = document.getElementById('show-bookmarks-btn');
         
         // --- App State ---
         let allBooks = [];
+        let searchableContent = [];
+        let isIndexBuilt = false;
         let currentBookId = null;
         let currentVolumeIndex = 0;
         let currentFontSize = 18;
@@ -498,14 +528,10 @@
         
         function openToc() {
             const tocModalContainer = document.getElementById('toc-modal');
-            
-            // Use a Map to ensure unique chapters and store their first page index.
-            // This is more efficient and robust than the previous reduce method.
             const chapterMap = new Map();
             if (bookPages && Array.isArray(bookPages)) {
                 bookPages.forEach((page, index) => {
                     const chapterTitle = page.chapter?.trim();
-                    // If the chapter has a title and we haven't seen it before, add it to the map.
                     if (chapterTitle && !chapterMap.has(chapterTitle)) {
                         chapterMap.set(chapterTitle, index);
                     }
@@ -524,7 +550,6 @@
             const tocList = tocModalContainer.querySelector('.overflow-y-auto');
             
             if (chapterMap.size > 0) {
-                // Iterate over the map entries to create the buttons.
                 for (const [chapter, index] of chapterMap.entries()) {
                     const chapterBtn = document.createElement('button');
                     chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg transition-colors duration-200';
@@ -544,18 +569,112 @@
             tocModalContainer.querySelector('.close-modal-btn').onclick = () => tocModalContainer.style.display = 'none';
         }
         
-        function handleSearch() {
+        // --- Search Functions ---
+        function handleSimpleSearch() {
             const query = searchInput.value.toLowerCase().trim();
+            searchResultsView.classList.add('hidden');
+            booksContainerWrapper.classList.remove('hidden');
             const filteredBooks = allBooks.filter(book => 
                 book.title.toLowerCase().includes(query) || 
                 book.author.toLowerCase().includes(query)
             );
-            renderBooks(filteredBooks);
+            sortAndRender(filteredBooks);
         }
+
+        function handleAdvancedSearch() {
+            const query = searchInput.value.trim();
+            if (!query) {
+                alert("الرجاء إدخال نص للبحث.");
+                return;
+            }
+            if (!isIndexBuilt) {
+                alert("الفهرسة لا تزال قيد التقدم. الرجاء الانتظار لحظة ثم المحاولة مرة أخرى.");
+                return;
+            }
+
+            showLoader(true);
+            
+            // Use setTimeout to allow the loader to render before the heavy search operation
+            setTimeout(() => {
+                const results = [];
+                const regex = new RegExp(query, 'gi');
+                
+                searchableContent.forEach(item => {
+                    if (item.text.toLowerCase().includes(query.toLowerCase())) {
+                        let match;
+                        while ((match = regex.exec(item.text)) !== null) {
+                            const snippet = createSnippet(item.text, match.index, query.length);
+                            results.push({ ...item, snippet });
+                        }
+                    }
+                });
+
+                displayAdvancedSearchResults(results, query);
+                showLoader(false);
+            }, 50);
+        }
+        
+        function createSnippet(text, index, queryLength, contextLength = 50) {
+            const start = Math.max(0, index - contextLength);
+            const end = Math.min(text.length, index + queryLength + contextLength);
+            let snippet = text.substring(start, end);
+            
+            // Add ellipses if the snippet is truncated
+            if (start > 0) snippet = "..." + snippet;
+            if (end < text.length) snippet = snippet + "...";
+
+            // Highlight the query
+            const regex = new RegExp(queryLength > 0 ? text.substring(index, index + queryLength) : '', 'gi');
+            snippet = snippet.replace(regex, `<mark>${text.substring(index, index + queryLength)}</mark>`);
+
+            return snippet;
+        }
+
+        function displayAdvancedSearchResults(results, query) {
+            booksContainerWrapper.classList.add('hidden');
+            searchResultsView.classList.remove('hidden');
+            searchResultsView.innerHTML = '';
+
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center mb-4';
+            header.innerHTML = `
+                <h2 class="text-xl font-bold text-white">نتائج البحث عن: "${query}" (${results.length} نتيجة)</h2>
+                <button id="back-to-library-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">العودة للمكتبة</button>
+            `;
+            searchResultsView.appendChild(header);
+
+            document.getElementById('back-to-library-btn').onclick = () => {
+                searchResultsView.classList.add('hidden');
+                booksContainerWrapper.classList.remove('hidden');
+                searchInput.value = '';
+                sortAndRender();
+            };
+
+            if (results.length === 0) {
+                searchResultsView.innerHTML += '<p class="text-gray-400 text-center">لم يتم العثور على نتائج في محتوى الكتب.</p>';
+                return;
+            }
+
+            const resultsContainer = document.createElement('div');
+            resultsContainer.className = 'space-y-4';
+            results.forEach(res => {
+                const resultEl = document.createElement('div');
+                resultEl.className = 'bg-gray-800 p-4 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors';
+                resultEl.innerHTML = `
+                    <h3 class="font-bold text-yellow-400">${res.bookTitle}</h3>
+                    <p class="text-sm text-gray-400 mb-2">${res.volumeTitle} - صفحة ${res.pageNumber}</p>
+                    <p class="text-gray-300">...${res.snippet}...</p>
+                `;
+                resultEl.onclick = () => handleBookClick(res.bookId, res.volumeIndex, res.pageNumber);
+                resultsContainer.appendChild(resultEl);
+            });
+            searchResultsView.appendChild(resultsContainer);
+        }
+
 
         // --- Bookmarking Functions ---
         function showBookmarkNoteModal(pageData) {
-            if (!pageData) return; // Add a guard clause
+            if (!pageData) return;
             const modalContainer = document.getElementById('bookmark-note-modal');
             modalContainer.innerHTML = `
                 <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
@@ -700,6 +819,39 @@
         }
 
         // --- App Initialization ---
+        async function buildSearchIndex() {
+            indexingStatus.classList.remove('hidden');
+            const detailPromises = allBooks.map(book => fetchBookDetails(book.id));
+            const allDetails = await Promise.all(detailPromises);
+
+            let tempIndex = [];
+            allDetails.forEach((detail, bookIndex) => {
+                if (detail && detail.volumes) {
+                    const bookInfo = allBooks[bookIndex];
+                    detail.volumes.forEach((volume, volIdx) => {
+                        if (volume.content) {
+                            volume.content.forEach(page => {
+                                tempIndex.push({
+                                    bookId: bookInfo.id,
+                                    bookTitle: bookInfo.title,
+                                    author: bookInfo.author,
+                                    volumeIndex: volIdx,
+                                    volumeTitle: volume.volumeTitle,
+                                    pageNumber: page.pageNumber,
+                                    chapter: page.chapter,
+                                    text: page.text
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+            searchableContent = tempIndex;
+            isIndexBuilt = true;
+            indexingStatus.classList.add('hidden');
+            console.log(`Search index built with ${searchableContent.length} pages.`);
+        }
+
         async function handleUrlHash() {
             const hash = window.location.hash;
             if (!hash.startsWith('#/book/')) return;
@@ -736,10 +888,24 @@
             }
             
             await handleUrlHash();
+            buildSearchIndex(); // Start indexing in the background
 
             // Event Listeners
+            searchBtn.addEventListener('click', () => {
+                if (searchContentCheckbox.checked) {
+                    handleAdvancedSearch();
+                } else {
+                    handleSimpleSearch();
+                }
+            });
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    searchBtn.click();
+                } else if (!searchContentCheckbox.checked && searchInput.value.trim() === '') {
+                    handleSimpleSearch();
+                }
+            });
             sortSelect.addEventListener('change', () => sortAndRender());
-            searchInput.addEventListener('input', handleSearch);
             showBookmarksBtn.addEventListener('click', showBookmarksModal);
             gridViewBtn.addEventListener('click', () => {
                 currentView = 'grid';
