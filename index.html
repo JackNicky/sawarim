@@ -66,6 +66,45 @@
             padding: 2px 1px;
             border-radius: 3px;
         }
+        /* Tooltip Styles */
+        .book-card-wrapper {
+            position: relative;
+        }
+        .book-tooltip {
+            visibility: hidden;
+            width: 220px;
+            background-color: #111827;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 50;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            pointer-events: none;
+            border: 1px solid #4b5563;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        .book-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #111827 transparent transparent transparent;
+        }
+        .book-card-wrapper:hover .book-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -228,12 +267,30 @@
         
         // --- Data Fetching ---
         const fetchMasterList = () => fetch('./data/books.json')
-            .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
-            .catch(err => { console.error("Error fetching master list:", err); return []; });
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .catch(err => { 
+                console.error("Error fetching master list:", err); 
+                // Add default values for missing properties to avoid errors
+                return [];
+            });
 
         const fetchBookDetails = (bookId) => fetch(`./data/book_${bookId}.json`)
-            .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
-            .catch(err => { console.error(`Error fetching book ${bookId}:`, err); return null; });
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .catch(err => { 
+                console.error(`Error fetching book ${bookId}:`, err); 
+                return null; 
+            });
+
 
         // --- Utility Functions ---
         const showLoader = (show) => {
@@ -439,27 +496,48 @@
             
             booksToRender.forEach(book => {
                 const isSaved = bookmarks.savedBooks.includes(book.id);
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'book-card-wrapper';
+
                 const bookElement = document.createElement('div');
-                bookElement.className = currentView === 'grid'
-                    ? "bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer group"
-                    : "bg-gray-800 rounded-lg shadow-lg flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-700 transition-colors";
-                
                 bookElement.dataset.bookId = book.id;
+
+                if (currentView === 'grid') {
+                    bookElement.className = "bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer group h-full flex flex-col";
+                    bookElement.innerHTML = `
+                        <div class="relative">
+                            <img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';">
+                            <div class="absolute top-2 right-2"><button class="save-book-btn p-2 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700 bg-opacity-50'} text-white" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button></div>
+                            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"><span class="text-white text-xl font-bold">اقرأ الآن</span></div>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
+                            <p class="text-gray-400 text-sm">${book.author}</p>
+                            ${book.subtitle ? `<p class="text-yellow-500 text-xs mt-2">${book.subtitle}</p>` : ''}
+                        </div>
+                    `;
+                } else { // List view
+                    bookElement.className = "bg-gray-800 rounded-lg shadow-lg flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-700 transition-colors";
+                    bookElement.innerHTML = `
+                        <img src="${book.cover}" alt="${book.title}" class="w-20 h-28 object-cover rounded-md flex-shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/80x112/111827/FFFFFF?text=Error';">
+                        <div class="flex-grow">
+                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
+                            <p class="text-gray-400 text-sm">${book.author}</p>
+                            ${book.subtitle ? `<p class="text-yellow-500 text-xs mt-1">${book.subtitle}</p>` : ''}
+                        </div>
+                        <button class="save-book-btn p-3 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700'} text-white self-start" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button>
+                    `;
+                }
+
+                const tooltipElement = document.createElement('div');
+                tooltipElement.className = 'book-tooltip';
+                tooltipElement.textContent = book.description || 'لا يوجد وصف متاح.';
                 
-                bookElement.innerHTML = currentView === 'grid' ? `
-                    <img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover pointer-events-none" onerror="this.onerror=null;this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';">
-                    <div class="p-4 pointer-events-none"><h3 class="font-bold text-lg text-white">${book.title}</h3><p class="text-gray-400 text-sm">${book.author}</p></div>
-                    <div class="absolute top-2 right-2"><button class="save-book-btn p-2 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700 bg-opacity-50'} text-white" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button></div>
-                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"><span class="text-white text-xl font-bold">اقرأ الآن</span></div>
-                ` : `
-                    <img src="${book.cover}" alt="${book.title}" class="w-20 h-28 object-cover rounded-md flex-shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/80x112/111827/FFFFFF?text=Error';">
-                    <div class="flex-grow">
-                        <h3 class="font-bold text-lg text-white">${book.title}</h3>
-                        <p class="text-gray-400 text-sm">${book.author}</p>
-                    </div>
-                    <button class="save-book-btn p-3 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700'} text-white self-start" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button>
-                `;
-                
+                wrapper.appendChild(bookElement);
+                wrapper.appendChild(tooltipElement);
+                booksContainer.appendChild(wrapper);
+
                 bookElement.addEventListener('click', (e) => {
                     if (!e.target.closest('.save-book-btn')) handleBookClick(book.id);
                 });
@@ -467,8 +545,6 @@
                     e.stopPropagation();
                     toggleSaveBook(book.id);
                 });
-
-                booksContainer.appendChild(bookElement);
             });
         }
 
@@ -597,17 +673,13 @@
             setTimeout(() => {
                 const results = [];
                 
-                // 1. Split the query by any whitespace.
                 const queryParts = query.split(/\s+/);
-                // 2. Escape each part to treat special characters literally.
                 const escapedParts = queryParts.map(part => part.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
-                // 3. Join them with a flexible whitespace matcher. This allows matching across newlines and multiple spaces.
                 const flexibleQuery = escapedParts.join('\\s+');
                 const regex = new RegExp(flexibleQuery, 'gi');
 
                 searchableContent.forEach(item => {
                     let match;
-                    // Use the regex to find all matches in the item's text
                     while ((match = regex.exec(item.text)) !== null) {
                         const snippet = createSnippet(item.text, match.index, match[0].length);
                         results.push({ ...item, snippet });
@@ -629,8 +701,6 @@
             if (start > 0) snippet = "..." + snippet;
             if (end < text.length) snippet = snippet + "...";
 
-            // Replace the matched text within the snippet with a highlighted version.
-            // This is safer than creating a new regex from potentially complex matched text.
             const highlightedSnippet = snippet.replace(matchedText, `<mark>${matchedText}</mark>`);
 
             return highlightedSnippet;
@@ -743,201 +813,4 @@
                                 <h4 class="font-bold text-white">${book.title}</h4>
                                 <p class="text-sm text-gray-400">${book.author}</p>
                             </div>
-                            <button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إزالة</button>
-                        `;
-                        elem.onclick = (e) => {
-                            if (!e.target.closest('.remove-saved-book-btn')) {
-                                modal.style.display = 'none';
-                                handleBookClick(bookId);
-                            }
-                        };
-                        container.appendChild(elem);
-                    }
-                });
-                 container.querySelectorAll('.remove-saved-book-btn').forEach(btn => {
-                    btn.onclick = (e) => {
-                        e.stopPropagation();
-                        let bookmarks = getBookmarks();
-                        bookmarks.savedBooks = bookmarks.savedBooks.filter(id => id != btn.dataset.id);
-                        saveBookmarks(bookmarks);
-                        renderSavedBooks();
-                        sortAndRender(); // Update main view
-                    };
-                });
-            };
-
-            const renderPageNotes = () => {
-                const bookmarks = getBookmarks();
-                const container = document.getElementById('page-notes-tab');
-                container.innerHTML = '';
-                if (bookmarks.pageNotes.length === 0) {
-                    container.innerHTML = '<p class="text-gray-400 text-center">لم تقم بحفظ أي علامات مرجعية للصفحات بعد.</p>';
-                    return;
-                }
-                bookmarks.pageNotes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(note => {
-                    const book = allBooks.find(b => b.id === note.bookId);
-                    if (book) {
-                         const elem = document.createElement('div');
-                        elem.className = 'bg-gray-700 p-3 rounded-lg cursor-pointer hover:bg-gray-600';
-                        elem.innerHTML = `
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h4 class="font-bold text-white">${book.title}</h4>
-                                    <p class="text-sm text-yellow-400">صفحة ${note.pageNumber} - ${note.chapter || ''}</p>
-                                    <p class="text-gray-300 mt-2 whitespace-pre-wrap">${note.note || '<i>لا توجد ملاحظة</i>'}</p>
-                                </div>
-                                <button class="text-red-500 hover:text-red-400 remove-page-note-btn flex-shrink-0 ml-4" data-id="${note.id}">إزالة</button>
-                            </div>
-                        `;
-                        elem.onclick = (e) => {
-                             if (!e.target.closest('.remove-page-note-btn')) {
-                                modal.style.display = 'none';
-                                handleBookClick(note.bookId, note.volumeIndex, note.pageNumber);
-                            }
-                        };
-                        container.appendChild(elem);
-                    }
-                });
-
-                container.querySelectorAll('.remove-page-note-btn').forEach(btn => {
-                    btn.onclick = (e) => {
-                        e.stopPropagation();
-                        let bookmarks = getBookmarks();
-                        bookmarks.pageNotes = bookmarks.pageNotes.filter(p => p.id != btn.dataset.id);
-                        saveBookmarks(bookmarks);
-                        renderPageNotes();
-                    };
-                });
-            };
-
-            renderSavedBooks();
-            renderPageNotes();
-
-            modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
-            modal.querySelectorAll('.bookmark-tab-btn').forEach(btn => {
-                btn.onclick = () => {
-                    modal.querySelector('.bookmark-tab-btn.active').classList.remove('active');
-                    btn.classList.add('active');
-                    modal.querySelector('.bookmark-tab-content:not(.hidden)').classList.add('hidden');
-                    document.getElementById(btn.dataset.tab).classList.remove('hidden');
-                };
-            });
-        }
-
-        // --- App Initialization ---
-        async function buildSearchIndex() {
-            indexingStatus.classList.remove('hidden');
-            const detailPromises = allBooks.map(book => fetchBookDetails(book.id));
-            const allDetails = await Promise.all(detailPromises);
-
-            let tempIndex = [];
-            allDetails.forEach((detail, bookIndex) => {
-                if (detail && detail.volumes) {
-                    const bookInfo = allBooks[bookIndex];
-                    detail.volumes.forEach((volume, volIdx) => {
-                        if (volume.content) {
-                            volume.content.forEach(page => {
-                                tempIndex.push({
-                                    bookId: bookInfo.id,
-                                    bookTitle: bookInfo.title,
-                                    author: bookInfo.author,
-                                    volumeIndex: volIdx,
-                                    volumeTitle: volume.volumeTitle,
-                                    pageNumber: page.pageNumber,
-                                    chapter: page.chapter,
-                                    text: page.text
-                                });
-                            });
-                        }
-                    });
-                }
-            });
-            searchableContent = tempIndex;
-            isIndexBuilt = true;
-            indexingStatus.classList.add('hidden');
-            console.log(`Search index built with ${searchableContent.length} pages.`);
-        }
-
-        async function handleUrlHash() {
-            const hash = window.location.hash;
-            if (!hash.startsWith('#/book/')) return;
-
-            const parts = hash.split('/');
-            if (parts.length < 7) return;
-
-            const bookId = parts[2];
-            const volumeIndex = parts[4];
-            const pageNumber = parts[6];
-
-            if (bookId && volumeIndex !== undefined && pageNumber) {
-                if (allBooks.length === 0) {
-                    allBooks = await fetchMasterList();
-                }
-                handleBookClick(bookId, volumeIndex, pageNumber);
-            }
-        }
-
-        async function initializeApp() {
-            showLoader(true);
-            allBooks = await fetchMasterList();
-            showLoader(false);
-            
-            if (allBooks.length === 0) {
-                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب. يرجى التأكد من تشغيل التطبيق عبر خادم ويب محلي والتحقق من المسارات في الكود.</p>';
-                return;
-            }
-            
-            loadAndFindArabicVoice();
-            
-            if (!window.location.hash.startsWith('#/book/')) {
-                sortAndRender();
-            }
-            
-            await handleUrlHash();
-            buildSearchIndex(); // Start indexing in the background
-
-            // Event Listeners
-            searchBtn.addEventListener('click', () => {
-                if (searchContentCheckbox.checked) {
-                    handleAdvancedSearch();
-                } else {
-                    handleSimpleSearch();
-                }
-            });
-            // Auto-resize search textarea and handle Enter key
-            searchInput.addEventListener('input', () => {
-                searchInput.style.height = 'auto';
-                searchInput.style.height = (searchInput.scrollHeight) + 'px';
-            });
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault(); // Prevent new line on Enter
-                    searchBtn.click();
-                }
-            });
-            searchInput.addEventListener('keyup', (e) => {
-                if (!searchContentCheckbox.checked && searchInput.value.trim() === '') {
-                    handleSimpleSearch();
-                }
-            });
-            sortSelect.addEventListener('change', () => sortAndRender());
-            showBookmarksBtn.addEventListener('click', showBookmarksModal);
-            gridViewBtn.addEventListener('click', () => {
-                currentView = 'grid';
-                gridViewBtn.classList.add('active');
-                listViewBtn.classList.remove('active');
-                sortAndRender();
-            });
-            listViewBtn.addEventListener('click', () => {
-                currentView = 'list';
-                listViewBtn.classList.add('active');
-                gridViewBtn.classList.remove('active');
-                sortAndRender();
-            });
-        }
-
-        initializeApp();
-    });
-    </script>
-</body>
-</html>
+                            <button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إز
