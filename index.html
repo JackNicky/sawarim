@@ -275,7 +275,6 @@
             })
             .catch(err => { 
                 console.error("Error fetching master list:", err); 
-                // Add default values for missing properties to avoid errors
                 return [];
             });
 
@@ -813,4 +812,200 @@
                                 <h4 class="font-bold text-white">${book.title}</h4>
                                 <p class="text-sm text-gray-400">${book.author}</p>
                             </div>
-                            <button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إز
+                            <button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إزالة</button>
+                        `;
+                        elem.onclick = (e) => {
+                            if (!e.target.closest('.remove-saved-book-btn')) {
+                                modal.style.display = 'none';
+                                handleBookClick(bookId);
+                            }
+                        };
+                        container.appendChild(elem);
+                    }
+                });
+                 container.querySelectorAll('.remove-saved-book-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        let bookmarks = getBookmarks();
+                        bookmarks.savedBooks = bookmarks.savedBooks.filter(id => id != btn.dataset.id);
+                        saveBookmarks(bookmarks);
+                        renderSavedBooks();
+                        sortAndRender(); // Update main view
+                    };
+                });
+            };
+
+            const renderPageNotes = () => {
+                const bookmarks = getBookmarks();
+                const container = document.getElementById('page-notes-tab');
+                container.innerHTML = '';
+                if (bookmarks.pageNotes.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 text-center">لم تقم بحفظ أي علامات مرجعية للصفحات بعد.</p>';
+                    return;
+                }
+                bookmarks.pageNotes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(note => {
+                    const book = allBooks.find(b => b.id === note.bookId);
+                    if (book) {
+                         const elem = document.createElement('div');
+                        elem.className = 'bg-gray-700 p-3 rounded-lg cursor-pointer hover:bg-gray-600';
+                        elem.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-bold text-white">${book.title}</h4>
+                                    <p class="text-sm text-yellow-400">صفحة ${note.pageNumber} - ${note.chapter || ''}</p>
+                                    <p class="text-gray-300 mt-2 whitespace-pre-wrap">${note.note || '<i>لا توجد ملاحظة</i>'}</p>
+                                </div>
+                                <button class="text-red-500 hover:text-red-400 remove-page-note-btn flex-shrink-0 ml-4" data-id="${note.id}">إزالة</button>
+                            </div>
+                        `;
+                        elem.onclick = (e) => {
+                             if (!e.target.closest('.remove-page-note-btn')) {
+                                modal.style.display = 'none';
+                                handleBookClick(note.bookId, note.volumeIndex, note.pageNumber);
+                            }
+                        };
+                        container.appendChild(elem);
+                    }
+                });
+
+                container.querySelectorAll('.remove-page-note-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        let bookmarks = getBookmarks();
+                        bookmarks.pageNotes = bookmarks.pageNotes.filter(p => p.id != btn.dataset.id);
+                        saveBookmarks(bookmarks);
+                        renderPageNotes();
+                    };
+                });
+            };
+
+            renderSavedBooks();
+            renderPageNotes();
+
+            modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
+            modal.querySelectorAll('.bookmark-tab-btn').forEach(btn => {
+                btn.onclick = () => {
+                    modal.querySelector('.bookmark-tab-btn.active').classList.remove('active');
+                    btn.classList.add('active');
+                    modal.querySelector('.bookmark-tab-content:not(.hidden)').classList.add('hidden');
+                    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+                };
+            });
+        }
+
+        // --- App Initialization ---
+        async function buildSearchIndex() {
+            indexingStatus.classList.remove('hidden');
+            const detailPromises = allBooks.map(book => fetchBookDetails(book.id));
+            const allDetails = await Promise.all(detailPromises);
+
+            let tempIndex = [];
+            allDetails.forEach((detail, bookIndex) => {
+                if (detail && detail.volumes) {
+                    const bookInfo = allBooks[bookIndex];
+                    detail.volumes.forEach((volume, volIdx) => {
+                        if (volume.content) {
+                            volume.content.forEach(page => {
+                                tempIndex.push({
+                                    bookId: bookInfo.id,
+                                    bookTitle: bookInfo.title,
+                                    author: bookInfo.author,
+                                    volumeIndex: volIdx,
+                                    volumeTitle: volume.volumeTitle,
+                                    pageNumber: page.pageNumber,
+                                    chapter: page.chapter,
+                                    text: page.text
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+            searchableContent = tempIndex;
+            isIndexBuilt = true;
+            indexingStatus.classList.add('hidden');
+            console.log(`Search index built with ${searchableContent.length} pages.`);
+        }
+
+        async function handleUrlHash() {
+            const hash = window.location.hash;
+            if (!hash.startsWith('#/book/')) return;
+
+            const parts = hash.split('/');
+            if (parts.length < 7) return;
+
+            const bookId = parts[2];
+            const volumeIndex = parts[4];
+            const pageNumber = parts[6];
+
+            if (bookId && volumeIndex !== undefined && pageNumber) {
+                if (allBooks.length === 0) {
+                    allBooks = await fetchMasterList();
+                }
+                handleBookClick(bookId, volumeIndex, pageNumber);
+            }
+        }
+
+        async function initializeApp() {
+            showLoader(true);
+            allBooks = await fetchMasterList();
+            showLoader(false);
+            
+            if (allBooks.length === 0) {
+                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب. يرجى التأكد من تشغيل التطبيق عبر خادم ويب محلي والتحقق من المسارات في الكود.</p>';
+                return;
+            }
+            
+            loadAndFindArabicVoice();
+            
+            if (!window.location.hash.startsWith('#/book/')) {
+                sortAndRender();
+            }
+            
+            await handleUrlHash();
+            buildSearchIndex(); // Start indexing in the background
+
+            // Event Listeners
+            searchBtn.addEventListener('click', () => {
+                if (searchContentCheckbox.checked) {
+                    handleAdvancedSearch();
+                } else {
+                    handleSimpleSearch();
+                }
+            });
+            searchInput.addEventListener('input', () => {
+                searchInput.style.height = 'auto';
+                searchInput.style.height = (searchInput.scrollHeight) + 'px';
+            });
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    searchBtn.click();
+                }
+            });
+            searchInput.addEventListener('keyup', (e) => {
+                if (!searchContentCheckbox.checked && searchInput.value.trim() === '') {
+                    handleSimpleSearch();
+                }
+            });
+            sortSelect.addEventListener('change', () => sortAndRender());
+            showBookmarksBtn.addEventListener('click', showBookmarksModal);
+            gridViewBtn.addEventListener('click', () => {
+                currentView = 'grid';
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+                sortAndRender();
+            });
+            listViewBtn.addEventListener('click', () => {
+                currentView = 'list';
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+                sortAndRender();
+            });
+        }
+
+        initializeApp();
+    });
+    </script>
+</body>
+</html>
