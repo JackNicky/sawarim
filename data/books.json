@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "title": "القرآن الكريم",
+    "author": " ",
+    "cover": "https://placehold.co/300x450/111827/FFFFFF?text=AL-QURAN AL-KAREAM",
+    "description": "كتاب الله تبارك وتعالى."
+  },
+  {
+    "id": 2,
+    "title": "الكافي",
+    "author": "الشيخ الكليني",
+    "cover": "https://placehold.co/300x450/111827/FFFFFF?text=ALKAFI",
+    "description": "من أهم مصادر الحديث عند الشيعة.",
+    "subtitle": "معتبر تقريباً عند الامامية"
+  },
+  {
+    "id": 3,
+    "title": "نهج البلاغة",
+    "author": "جمع: الشريف الرضي",
+    "cover": "https://placehold.co/300x450/111827/FFFFFF?text=NAHG AL-BALAGAH",
+    "description": "مجموعة خطب لأمير المؤمنين عليه السلام جمعها الشريف الرضي.",
+    "subtitle": "خطب ومواعظ وحكم"
+  }
+]
+
+
+
