@@ -265,25 +265,33 @@
         let isSpeaking = false;
         let arabicVoice = null;
         
-        // --- Data Fetching ---
+        // --- Data Fetching with Enhanced Error Logging ---
         const fetchMasterList = () => fetch('./data/books.json')
             .then(res => {
                 if (!res.ok) {
+                    console.error(`Server responded with status: ${res.status} for books.json`);
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
-                return res.json();
+                return res.json().catch(parseErr => {
+                    console.error("Failed to parse books.json. Please check for syntax errors (e.g., trailing commas).", parseErr);
+                    throw new Error("JSON parsing error");
+                });
             })
             .catch(err => { 
-                console.error("Error fetching master list:", err); 
+                console.error("Could not load master list. Ensure http-server is running and data/books.json is accessible and valid.", err);
                 return [];
             });
 
         const fetchBookDetails = (bookId) => fetch(`./data/book_${bookId}.json`)
             .then(res => {
                 if (!res.ok) {
+                     console.error(`Server responded with status: ${res.status} for book_${bookId}.json`);
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
-                return res.json();
+                return res.json().catch(parseErr => {
+                    console.error(`Failed to parse book_${bookId}.json. Please check for syntax errors.`, parseErr);
+                    throw new Error("JSON parsing error");
+                });
             })
             .catch(err => { 
                 console.error(`Error fetching book ${bookId}:`, err); 
@@ -952,18 +960,20 @@
             showLoader(false);
             
             if (allBooks.length === 0) {
-                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب. يرجى التأكد من تشغيل التطبيق عبر خادم ويب محلي والتحقق من المسارات في الكود.</p>';
+                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب. يرجى التأكد من أن الخادم المحلي يعمل وأن ملف `data/books.json` موجود ولا يحتوي على أخطاء. افتح لوحة التحكم (F12) لمزيد من التفاصيل.</p>';
                 return;
             }
             
             loadAndFindArabicVoice();
             
-            if (!window.location.hash.startsWith('#/book/')) {
-                sortAndRender();
-            }
+            // Render the main library view first
+            sortAndRender();
             
+            // Then handle any deep links from the URL
             await handleUrlHash();
-            buildSearchIndex(); // Start indexing in the background
+            
+            // Finally, build the search index in the background
+            buildSearchIndex(); 
 
             // Event Listeners
             searchBtn.addEventListener('click', () => {
