@@ -207,11 +207,11 @@
         const showBookmarksBtn = document.getElementById('show-bookmarks-btn');
         
         let allBooks = [];
-        let currentBookId = null;
+        let currentBookInfo = null;
         let currentVolumeNumber = 1;
         let currentFontSize = 18;
-        let currentBookVolumes = [];
-        let currentPageIndex = 0; 
+        let currentBookPartVolumes = []; // Holds the volumes of the currently loaded part/file
+        let currentVolumeIndexInPart = 0; 
         let currentView = 'grid';
         let utterance = null;
         let isSpeaking = false;
@@ -231,7 +231,6 @@
         async function fetchBookDataForReading(bookInfo, absoluteVolumeNumber = 1) {
             try {
                 let fileToFetch;
-                let partIndex = 0;
                 if (bookInfo.parts && bookInfo.parts.length > 0) {
                     const partInfo = bookInfo.parts.find(p => absoluteVolumeNumber >= p.startVolume && absoluteVolumeNumber <= p.endVolume);
                     if (!partInfo) {
@@ -239,13 +238,11 @@
                         return null;
                     }
                     fileToFetch = partInfo.file;
-                    partIndex = bookInfo.parts.indexOf(partInfo);
-                    showLoader(true, `جاري تحميل الجزء ${partIndex + 1} من ${bookInfo.parts.length}...`);
                 } else {
                     fileToFetch = `book_${bookInfo.id}.json`;
-                    showLoader(true, `جاري تحميل الكتاب...`);
                 }
                 
+                showLoader(true, `جاري تحميل الكتاب...`);
                 const res = await fetch(`./data/${fileToFetch}`);
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${fileToFetch}`);
                 
@@ -314,15 +311,15 @@
             history.pushState(null, "", window.location.pathname);
         }
 
-        function openReader(bookInfo, volumesData, relativeVolumeIndex, pageNumber = null) {
+        function openReader(bookInfo, volumesDataInPart, relativeVolumeIndex, pageNumber = null) {
             mainView.classList.add('hidden');
             readerView.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
 
-            currentBookId = bookInfo.id;
-            currentBookVolumes = volumesData;
-            currentPageIndex = relativeVolumeIndex; 
-            const volume = currentBookVolumes[currentPageIndex];
+            currentBookInfo = bookInfo;
+            currentBookPartVolumes = volumesDataInPart;
+            currentVolumeIndexInPart = relativeVolumeIndex; 
+            const volume = currentBookPartVolumes[currentVolumeIndexInPart];
             
             if(!volume || !volume.content){
                 alert('خطأ: لم يتم العثور على محتوى الجزء المحدد.');
@@ -335,7 +332,7 @@
             readerView.querySelector('#reader-content-primary').style.fontSize = `${currentFontSize}px`;
             
             const bookmarks = getBookmarks();
-            const bookmarkKey = `${currentBookId}-${currentVolumeNumber}`;
+            const bookmarkKey = `${bookInfo.id}-${currentVolumeNumber}`;
             let targetPageNum = pageNumber ? parseInt(pageNumber, 10) : (bookmarks.pageProgress[bookmarkKey] || 1);
             
             let pageIndexInVolume = volume.content.findIndex(p => p.pageNumber == targetPageNum);
@@ -346,7 +343,7 @@
         }
         
        function displayPage(pageIndexInVolume) {
-            const volume = currentBookVolumes[currentPageIndex];
+            const volume = currentBookPartVolumes[currentVolumeIndexInPart];
             if (!volume || !volume.content || pageIndexInVolume >= volume.content.length) return;
             
             stopSpeech();
@@ -355,25 +352,29 @@
             
             readerView.querySelector('#reader-content-primary').innerHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${currentPageData.chapter || ''}</h4><p>${currentPageData.text.replace(/\n/g, '<br>')}</p>`;
             readerView.querySelector('#reader-content-primary').scrollTop = 0;
-            readerView.querySelector('#page-jump-input').value = currentPageData.pageNumber;
+            const pageJumpInput = readerView.querySelector('#page-jump-input');
+            pageJumpInput.value = currentPageData.pageNumber;
             
             const lastPage = volume.content[volume.content.length - 1]?.pageNumber || 0;
             readerView.querySelector('#volume-title-footer').textContent = volume.volumeTitle;
             readerView.querySelector('#total-pages-footer').textContent = `من ${lastPage}`;
-            readerView.querySelector('#page-jump-input').max = lastPage;
+            pageJumpInput.max = lastPage;
             
-            readerView.querySelector('#prev-page-btn').onclick = () => { if (pageIndexInVolume > 0) displayPage(pageIndexInVolume - 1); };
-            readerView.querySelector('#next-page-btn').onclick = () => { if (pageIndexInVolume < volume.content.length - 1) displayPage(pageIndexInVolume + 1); };
+            const prevBtn = readerView.querySelector('#prev-page-btn');
+            const nextBtn = readerView.querySelector('#next-page-btn');
+
+            prevBtn.onclick = () => { if (pageIndexInVolume > 0) displayPage(pageIndexInVolume - 1); };
+            nextBtn.onclick = () => { if (pageIndexInVolume < volume.content.length - 1) displayPage(pageIndexInVolume + 1); };
             
-            readerView.querySelector('#prev-page-btn').disabled = pageIndexInVolume === 0;
-            readerView.querySelector('#prev-page-btn').classList.toggle('disabled-btn', pageIndexInVolume === 0);
-            readerView.querySelector('#next-page-btn').disabled = pageIndexInVolume === volume.content.length - 1;
-            readerView.querySelector('#next-page-btn').classList.toggle('disabled-btn', pageIndexInVolume === volume.content.length - 1);
+            prevBtn.disabled = pageIndexInVolume === 0;
+            prevBtn.classList.toggle('disabled-btn', pageIndexInVolume === 0);
+            nextBtn.disabled = pageIndexInVolume === volume.content.length - 1;
+            nextBtn.classList.toggle('disabled-btn', pageIndexInVolume === volume.content.length - 1);
             
-            history.replaceState(null, '', `#/book/${currentBookId}/volume/${currentVolumeNumber}/page/${currentPageData.pageNumber}`);
+            history.replaceState(null, '', `#/book/${currentBookInfo.id}/volume/${currentVolumeNumber}/page/${currentPageData.pageNumber}`);
             
             let bookmarks = getBookmarks();
-            bookmarks.pageProgress[`${currentBookId}-${currentVolumeNumber}`] = currentPageData.pageNumber;
+            bookmarks.pageProgress[`${currentBookInfo.id}-${currentVolumeNumber}`] = currentPageData.pageNumber;
             saveBookmarks(bookmarks);
         }
 
@@ -387,14 +388,14 @@
             
             const pageJumpInput = readerView.querySelector('#page-jump-input');
             const jumpHandler = () => {
-                 const volume = currentBookVolumes[currentPageIndex];
+                 const volume = currentBookPartVolumes[currentVolumeIndexInPart];
                  if (!volume) return;
                 const targetPage = parseInt(pageJumpInput.value, 10);
                 const newPageIndex = volume.content.findIndex(p => p.pageNumber === targetPage);
                 if (newPageIndex !== -1) {
                     displayPage(newPageIndex);
                 } else {
-                    const currentPageData = volume.content.find(p=>p.pageNumber == pageJumpInput.value);
+                    const currentPageData = volume.content[0];
                     if(currentPageData) pageJumpInput.value = currentPageData.pageNumber;
                 }
             };
@@ -410,13 +411,8 @@
             });
         }
         
-        function handleSpeech() {
-            // Unchanged
-        }
-
-        function toggleFullScreen() {
-            // Unchanged
-        }
+        function handleSpeech() { /* Unchanged */ }
+        function toggleFullScreen() { /* Unchanged */ }
 
         function sortAndRender(booksToRender = allBooks) {
             const sortValue = sortSelect.value;
@@ -435,7 +431,7 @@
                 : 'flex flex-col gap-4';
             const bookmarks = getBookmarks();
             booksToRender.forEach(book => {
-                const isSaved = bookmarks.savedBooks.some(b => b === book.id);
+                const isSaved = bookmarks.savedBooks.includes(book.id);
                 const wrapper = document.createElement('div');
                 wrapper.className = 'book-card-wrapper';
                 const bookElement = document.createElement('div');
@@ -463,62 +459,63 @@
         function toggleSaveBook(bookId) {
             let bookmarks = getBookmarks();
             const index = bookmarks.savedBooks.indexOf(bookId);
-            if (index > -1) bookmarks.savedBooks.splice(index, 1);
-            else bookmarks.savedBooks.push(bookId);
+            if (index > -1) {
+                bookmarks.savedBooks.splice(index, 1);
+            } else {
+                bookmarks.savedBooks.push(bookId);
+            }
             saveBookmarks(bookmarks);
-            sortAndRender();
+            // Re-render the currently displayed books to reflect the change
+            const currentQuery = searchInput.value.toLowerCase().trim();
+             const filteredBooks = allBooks.filter(book => 
+                book.title.toLowerCase().includes(currentQuery) || 
+                book.author.toLowerCase().includes(currentQuery)
+            );
+            sortAndRender(filteredBooks);
         }
 
         async function handleBookClick(bookId, directVolumeNumber = null, pageNumber = null) {
             const bookInfo = allBooks.find(b => b.id == bookId);
             if (!bookInfo) return;
 
-            if (bookInfo.parts && bookInfo.totalVolumes > 1 && !directVolumeNumber) {
+            // If a specific volume is requested, fetch and open directly.
+            if (directVolumeNumber) {
+                const bookDetails = await fetchBookDataForReading(bookInfo, directVolumeNumber);
+                if (bookDetails && bookDetails.volumes) {
+                    let relativeIndex = bookDetails.volumes.findIndex(v => v.volumeNumber === directVolumeNumber);
+                     if (relativeIndex === -1 && bookInfo.parts) {
+                        const partInfo = bookInfo.parts.find(p => directVolumeNumber >= p.startVolume && directVolumeNumber <= p.endVolume);
+                        if(partInfo) relativeIndex = directVolumeNumber - partInfo.startVolume;
+                    }
+                    if(relativeIndex === -1) relativeIndex = 0;
+                    openReader(bookInfo, bookDetails.volumes, relativeIndex, pageNumber);
+                }
+                return;
+            }
+
+            const hasSingleFileVolumes = bookInfo.volumes && bookInfo.volumes.length > 1;
+            const hasMultiPartVolumes = bookInfo.parts && bookInfo.totalVolumes > 1;
+
+            if (hasSingleFileVolumes || hasMultiPartVolumes) {
                 openVolumeSelector(bookInfo);
-                return;
+            } else {
+                // Single volume book, fetch and open.
+                const bookDetails = await fetchBookDataForReading(bookInfo);
+                if (bookDetails && bookDetails.volumes) {
+                    openReader(bookInfo, bookDetails.volumes, 0, pageNumber);
+                }
             }
-
-            const volumeToLoad = directVolumeNumber || 1;
-            const bookDetails = await fetchBookDataForReading(bookInfo, volumeToLoad);
-
-            if (!bookDetails || !bookDetails.volumes || bookDetails.volumes.length === 0) {
-                alert('عذراً، لم يتم العثور على محتوى هذا الكتاب.');
-                return;
-            }
-
-            if (bookDetails.volumes.length > 1 && !bookInfo.parts && !directVolumeNumber) {
-                openVolumeSelector(bookInfo, bookDetails.volumes);
-                return;
-            }
-
-            let relativeIndex = bookDetails.volumes.findIndex(v => v.volumeNumber === volumeToLoad);
-            if (relativeIndex === -1) {
-                 if(bookInfo.parts){
-                     const partInfo = bookInfo.parts.find(p => volumeToLoad >= p.startVolume && volumeToLoad <= p.endVolume);
-                     if(partInfo) {
-                        const expectedIndex = volumeToLoad - partInfo.startVolume;
-                        if (expectedIndex < bookDetails.volumes.length) {
-                           relativeIndex = expectedIndex;
-                        }
-                     }
-                 }
-                 if(relativeIndex === -1) relativeIndex = 0;
-            }
-            
-            openReader(bookInfo, bookDetails.volumes, relativeIndex, pageNumber);
         }
 
-       function openVolumeSelector(bookInfo, loadedVolumes = null) {
+       function openVolumeSelector(bookInfo) {
             const volumesModalContainer = document.getElementById('volumes-modal');
             let volumeButtonsHTML = '';
 
-            if (loadedVolumes) {
-                // Case 1: For single-file multi-volume books (volumes are pre-loaded)
-                volumeButtonsHTML = loadedVolumes.map((volume, index) => 
+            if (bookInfo.volumes && bookInfo.volumes.length > 0) {
+                volumeButtonsHTML = bookInfo.volumes.map((volume, index) => 
                     `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg volume-select-btn" data-volume-index="${index}">${volume.volumeTitle}</button>`
                 ).join('');
-            } else {
-                // Case 2: For multi-part books (generate a list from total count)
+            } else if (bookInfo.parts && bookInfo.totalVolumes) {
                 for (let i = 1; i <= bookInfo.totalVolumes; i++) {
                     volumeButtonsHTML += `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg volume-select-btn" data-volume-number="${i}">الجزء ${i}</button>`;
                 }
@@ -540,19 +537,61 @@
             volumesModalContainer.querySelectorAll('.volume-select-btn').forEach(btn => {
                 btn.onclick = async () => {
                     volumesModalContainer.style.display = 'none';
-                    if (btn.dataset.volumeNumber) { // Multi-part book volume selected
+                    if (btn.dataset.volumeNumber) { 
                         const selectedVolumeNumber = parseInt(btn.dataset.volumeNumber);
                         handleBookClick(bookInfo.id, selectedVolumeNumber);
-                    } else { // Single-file book volume selected
-                        const selectedVolumeIndex = parseInt(btn.dataset.volumeIndex);
-                        openReader(bookInfo, loadedVolumes, selectedVolumeIndex);
+                    } else { 
+                        const bookDetails = await fetchBookDataForReading(bookInfo);
+                        if(bookDetails){
+                           const selectedVolumeIndex = parseInt(btn.dataset.volumeIndex);
+                           openReader(bookInfo, bookDetails.volumes, selectedVolumeIndex);
+                        }
                     }
                 };
             });
         }
         
         function openToc() {
-            // Implementation unchanged
+             const tocModalContainer = document.getElementById('toc-modal');
+            const volume = currentBookPartVolumes[currentVolumeIndexInPart];
+            if (!volume || !volume.content) return;
+
+            const chapterMap = new Map();
+            volume.content.forEach((page, index) => {
+                const chapterTitle = page.chapter?.trim();
+                if (chapterTitle && !chapterMap.has(chapterTitle)) {
+                    chapterMap.set(chapterTitle, index);
+                }
+            });
+
+            tocModalContainer.innerHTML = `
+                <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 class="text-xl font-bold text-white">فهرس الأبواب</h2>
+                        <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div class="p-4 space-y-2 overflow-y-auto"></div>
+                </div>`;
+                
+            const tocList = tocModalContainer.querySelector('.overflow-y-auto');
+            
+            if (chapterMap.size > 0) {
+                for (const [chapter, index] of chapterMap.entries()) {
+                    const chapterBtn = document.createElement('button');
+                    chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg transition-colors duration-200';
+                    chapterBtn.textContent = chapter;
+                    chapterBtn.onclick = () => {
+                        displayPage(index);
+                        tocModalContainer.style.display = 'none';
+                    };
+                    tocList.appendChild(chapterBtn);
+                }
+            } else {
+                tocList.innerHTML = '<p class="text-gray-400 text-center">لا يوجد فهرس لهذا الجزء.</p>';
+            }
+            
+            tocModalContainer.style.display = 'flex';
+            tocModalContainer.querySelector('.close-modal-btn').onclick = () => tocModalContainer.style.display = 'none';
         }
         
         function handleSimpleSearch() {
@@ -565,7 +604,7 @@
         }
 
         function showBookmarksModal() {
-            // Implementation unchanged
+            // Unchanged
         }
         
         async function handleUrlHash() {
