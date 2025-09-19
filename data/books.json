@@ -15,14 +15,14 @@
     "description": "من أهم مصادر الحديث عند الشيعة.",
     "subtitle": "معتبر تقريباً عند الامامية",
     "volumes": [
-        { "volumeNumber": 1, "volumeTitle": "الجزء الأول: كتاب العقل والجهل" },
-        { "volumeNumber": 2, "volumeTitle": "الجزء الثاني: كتاب فضل العلم" },
-        { "volumeNumber": 3, "volumeTitle": "الجزء الثالث: كتاب التوحيد" },
-        { "volumeNumber": 4, "volumeTitle": "الجزء الرابع: كتاب الحجة" },
-        { "volumeNumber": 5, "volumeTitle": "الجزء الخامس: كتاب الإيمان والكفر" },
-        { "volumeNumber": 6, "volumeTitle": "الجزء السادس: كتاب الدعاء" },
-        { "volumeNumber": 7, "volumeTitle": "الجزء السابع: كتاب فضل القرآن" },
-        { "volumeNumber": 8, "volumeTitle": "الجزء الثامن: كتاب العشرة" }
+        { "volumeNumber": 1, "volumeTitle": "الجزء الاول" },
+        { "volumeNumber": 2, "volumeTitle": "الجزء الثاني" },
+        { "volumeNumber": 3, "volumeTitle": "الجزء الثالث" },
+        { "volumeNumber": 4, "volumeTitle": "الجزء الرابع" },
+        { "volumeNumber": 5, "volumeTitle": "الجزء الخامس" },
+        { "volumeNumber": 6, "volumeTitle": "الجزء السادس" },
+        { "volumeNumber": 7, "volumeTitle": "الجزء السابع" },
+        { "volumeNumber": 8, "volumeTitle": "الجزء الثامن" }
     ]
   },
   {
