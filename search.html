@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بحث متقدم - مكتبة صوارم حيدرية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        .search-results-view mark {
+            background-color: #facc15;
+            color: #1f2937;
+            padding: 2px 1px;
+            border-radius: 3px;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ca8a04;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <header class="bg-gray-800 shadow-lg p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white">بحث متقدم في المحتوى</h1>
+            <a href="./index.html" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                العودة للمكتبة
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6">
+        <div id="initial-loading-view" class="text-center py-10">
+             <div class="loader mx-auto"></div>
+             <p id="indexing-status" class="mt-4 text-yellow-400">جاري تجهيز فهرس البحث، يرجى الانتظار...</p>
+             <progress id="indexing-progress" class="w-full h-2 mt-2" value="0" max="100"></progress>
+        </div>
+
+        <div id="search-view" class="hidden">
+             <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <div class="relative flex-grow">
+                    <textarea id="search-input" placeholder="ابحث في محتوى جميع الكتب..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="1" style="resize: none;"></textarea>
+                </div>
+                <div class="flex items-center gap-4 flex-wrap">
+                    <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
+                </div>
+            </div>
+            <div id="search-results-view"></div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialLoadingView = document.getElementById('initial-loading-view');
+            const indexingStatus = document.getElementById('indexing-status');
+            const indexingProgress = document.getElementById('indexing-progress');
+            const searchView = document.getElementById('search-view');
+            const searchInput = document.getElementById('search-input');
+            const searchBtn = document.getElementById('search-btn');
+            const searchResultsView = document.getElementById('search-results-view');
+            
+            let allBooks = [];
+            let searchableContent = [];
+            let isIndexBuilt = false;
+
+            const fetchMasterList = () => fetch('./data/books.json')
+                .then(res => res.ok ? res.json() : Promise.reject(`Failed to load books.json`))
+                .catch(err => { console.error(err); return []; });
+            
+            const fetchBookPart = (partFile) => fetch(`./data/${partFile}`)
+                .then(res => res.ok ? res.json() : Promise.reject(`Failed to load ${partFile}`))
+                .catch(err => { console.error(err); return null; });
+
+            async function buildSearchIndex() {
+                allBooks = await fetchMasterList();
+                if (allBooks.length === 0) {
+                    indexingStatus.textContent = "فشل تحميل قائمة الكتب.";
+                    return;
+                }
+
+                indexingProgress.max = allBooks.length;
+                let booksProcessed = 0;
+
+                for (const book of allBooks) {
+                    let bookDetails;
+                    if (book.parts && book.parts.length > 0) {
+                        const partPromises = book.parts.map(partFile => fetchBookPart(partFile));
+                        const allPartsData = await Promise.all(partPromises);
+                        const combinedVolumes = allPartsData.flat().filter(Boolean).map(part => part.volumes).flat();
+                        bookDetails = { volumes: combinedVolumes };
+                    } else {
+                        bookDetails = await fetchBookPart(`book_${book.id}.json`);
+                    }
+                    
+                    if (bookDetails && bookDetails.volumes) {
+                        bookDetails.volumes.forEach((volume, volIdx) => {
+                            volume.content?.forEach(page => {
+                                searchableContent.push({
+                                    bookId: book.id,
+                                    bookTitle: book.title,
+                                    volumeIndex: volIdx,
+                                    volumeTitle: volume.volumeTitle,
+                                    pageNumber: page.pageNumber,
+                                    chapter: page.chapter,
+                                    text: page.text
+                                });
+                            });
+                        });
+                    }
+                    booksProcessed++;
+                    indexingProgress.value = booksProcessed;
+                }
+
+                isIndexBuilt = true;
+                initialLoadingView.classList.add('hidden');
+                searchView.classList.remove('hidden');
+                console.log(`Search index built with ${searchableContent.length} pages.`);
+            }
+
+            function handleAdvancedSearch() {
+                const query = searchInput.value.trim();
+                if (!query) {
+                    searchResultsView.innerHTML = '<p class="text-center text-gray-400">الرجاء إدخال نص للبحث.</p>';
+                    return;
+                }
+                 if (!isIndexBuilt) {
+                    alert("الفهرسة لا تزال قيد التقدم. الرجاء الانتظار.");
+                    return;
+                }
+
+                const results = [];
+                const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+
+                searchableContent.forEach(item => {
+                    let match;
+                    while ((match = regex.exec(item.text)) !== null) {
+                        const snippet = createSnippet(item.text, match.index, match[0].length);
+                        results.push({ ...item, snippet });
+                        break; // Show only the first match per page to avoid clutter
+                    }
+                });
+                
+                displayAdvancedSearchResults(results, query);
+            }
+            
+            function createSnippet(text, index, matchLength, contextLength = 60) {
+                const start = Math.max(0, index - contextLength);
+                const end = Math.min(text.length, index + matchLength + contextLength);
+                let snippet = text.substring(start, end);
+                if (start > 0) snippet = "..." + snippet;
+                if (end < text.length) snippet = snippet + "...";
+                const matchedText = text.substring(index, index + matchLength);
+                return snippet.replace(new RegExp(matchedText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), `<mark>${matchedText}</mark>`);
+            }
+
+            function displayAdvancedSearchResults(results, query) {
+                searchResultsView.innerHTML = '';
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center mb-4';
+                header.innerHTML = `<h2 class="text-xl font-bold text-white">نتائج البحث عن: "${query}" (${results.length} نتيجة)</h2>`;
+                searchResultsView.appendChild(header);
+
+                if (results.length === 0) {
+                    searchResultsView.innerHTML += '<p class="text-gray-400 text-center">لم يتم العثور على نتائج.</p>';
+                    return;
+                }
+
+                const resultsContainer = document.createElement('div');
+                resultsContainer.className = 'space-y-4';
+                results.forEach(res => {
+                    const resultEl = document.createElement('a');
+                    resultEl.href = `index.html#/book/${res.bookId}/volume/${res.volumeIndex}/page/${res.pageNumber}`;
+                    resultEl.target = "_blank"; // Open in new tab
+                    resultEl.className = 'block bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-colors';
+                    resultEl.innerHTML = `
+                        <h3 class="font-bold text-yellow-400">${res.bookTitle}</h3>
+                        <p class="text-sm text-gray-400 mb-2">${res.volumeTitle} - صفحة ${res.pageNumber}</p>
+                        <p class="text-gray-300">${res.snippet}</p>
+                    `;
+                    resultsContainer.appendChild(resultEl);
+                });
+                searchResultsView.appendChild(resultsContainer);
+            }
+
+            searchBtn.addEventListener('click', handleAdvancedSearch);
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAdvancedSearch();
+                }
+            });
+
+            // Start indexing on page load
+            buildSearchIndex();
+        });
+    </script>
+</body>
+</html>
