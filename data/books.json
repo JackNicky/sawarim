@@ -286,11 +286,13 @@
     "cover": "https://placehold.co/300x450/111827/FFFFFF?text=BEHAR AL-ANWAR",
     "description": "موسوعة حديثية كبرى، جمع فيها مختلف روايات أهل البيت عليهم السلام ورتبها في أبواب شاملة للعقائد والفقه والتفسير والسيرة والفضائل والتاريخ. يُعدّ هذا الكتاب أضخم موسوعة روائية شيعية، ويمثل ذروة المنهج الإخباري في الاعتماد على النصوص وحفظها من الضياع مع إضافة شروح وتوضيحات من المؤلف.",
     "subtitle": "موسوعي، روائي، إخباري.",
+    "totalVolumes": 110,
     "parts": [
-      "book_36.json",
-      "book_37.json",
-      "book_38.json",
-      "book_39.json"
+      { "file": "book_36.json", "startVolume": 1, "endVolume": 28 },
+      { "file": "book_37.json", "startVolume": 29, "endVolume": 56 },
+      { "file": "book_38.json", "startVolume": 57, "endVolume": 84 },
+      { "file": "book_39.json", "startVolume": 85, "endVolume": 110 }
     ]
   }
 ]
+
