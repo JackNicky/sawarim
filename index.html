@@ -35,38 +35,11 @@
         .theme-sepia { --bg-color: #fbf3e4; --text-color: #5f4b32; --highlight-color: #d97706; }
         .reader-content-area { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
         .reader-content-area h4 { color: var(--highlight-color); }
-
-        #text-selection-tooltip {
-            position: absolute;
-            display: none;
-            background-color: #111827;
-            border: 1px solid #4b5563;
-            border-radius: 8px;
-            padding: 4px;
-            z-index: 100;
-        }
-        .tooltip-btn {
-            background: none;
-            border: none;
-            color: white;
-            padding: 8px;
-            cursor: pointer;
-            border-radius: 6px;
-        }
-        .tooltip-btn:hover { background-color: #374151; }
-        .highlighted-text { background-color: rgba(252, 211, 77, 0.3); }
         .view-btn.active { background-color: #ca8a04; color: white; }
         .bookmark-tab-btn.active {
             background-color: #ca8a04;
             color: white;
         }
-        .search-results-view mark {
-            background-color: #facc15;
-            color: #1f2937;
-            padding: 2px 1px;
-            border-radius: 3px;
-        }
-        /* Tooltip Styles */
         .book-card-wrapper {
             position: relative;
         }
@@ -121,22 +94,13 @@
         </header>
 
         <main class="container mx-auto p-6">
-            <div class="flex flex-col md:flex-row gap-4 mb-6">
+             <div class="flex flex-col md:flex-row gap-4 mb-6">
                 <div class="relative flex-grow">
-                    <textarea id="search-input" placeholder="ابحث..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="1" style="resize: none;"></textarea>
+                    <input id="search-input" placeholder="ابحث عن عنوان كتاب أو مؤلف..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500" />
                 </div>
                 <div class="flex items-center gap-4 flex-wrap">
                     <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
-                     <div id="search-content-wrapper" class="relative">
-                        <label id="search-content-label" class="flex items-center gap-2 cursor-pointer text-gray-300">
-                            <input type="checkbox" id="search-content-checkbox" class="form-checkbox bg-gray-700 border-gray-600 text-yellow-500 h-5 w-5 rounded focus:ring-yellow-500">
-                            <span>بحث في المحتوى</span>
-                        </label>
-                        <div id="search-content-tooltip" class="absolute hidden bg-gray-700 text-white text-xs rounded py-1 px-2 -top-8 left-0 whitespace-nowrap">
-                            جاري تجهيز البحث في المحتوى...
-                        </div>
-                    </div>
-                    <div id="indexing-status" class="text-xs text-yellow-400 hidden items-center gap-2"><div class="w-4 h-4 border-2 border-dashed rounded-full animate-spin border-yellow-400"></div><span>جاري فهرسة الكتب للبحث السريع...</span></div>
+                    <a href="./search.html" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث متقدم في المحتوى</a>
                 </div>
             </div>
             <div class="flex flex-col md:flex-row gap-4 mb-8 items-center">
@@ -161,7 +125,6 @@
                 <div id="books-container"></div>
                 <div id="no-results" class="text-center text-gray-500 text-xl mt-10 hidden"><p>لم يتم العثور على نتائج.</p></div>
             </div>
-            <div id="search-results-view" class="hidden"></div>
         </main>
     </div>
 
@@ -206,11 +169,6 @@
     </div>
 
     <!-- Modals and Overlays -->
-    <div id="text-selection-tooltip">
-        <button id="highlight-btn" class="tooltip-btn" title="حفظ المقطع المظلل">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
-        </button>
-    </div>
     <div id="bookmark-note-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4"></div>
     <div id="volumes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4"></div>
     <div id="toc-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4"></div>
@@ -237,89 +195,54 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- UI Elements ---
         const mainView = document.getElementById('main-view');
         const readerView = document.getElementById('reader-view');
         const loadingOverlay = document.getElementById('loading-overlay');
-        const booksContainerWrapper = document.getElementById('books-container-wrapper');
         const booksContainer = document.getElementById('books-container');
         const noResults = document.getElementById('no-results');
         const sortSelect = document.getElementById('sort-select');
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
-        const searchContentCheckbox = document.getElementById('search-content-checkbox');
-        const indexingStatus = document.getElementById('indexing-status');
-        const searchResultsView = document.getElementById('search-results-view');
         const gridViewBtn = document.getElementById('grid-view-btn');
         const listViewBtn = document.getElementById('list-view-btn');
         const showBookmarksBtn = document.getElementById('show-bookmarks-btn');
         
-        // --- App State ---
         let allBooks = [];
-        let searchableContent = [];
-        let isIndexBuilt = false;
         let currentBookId = null;
         let currentVolumeIndex = 0;
         let currentFontSize = 18;
         let bookPages = [];
         let currentPageIndex = 0;
         let currentView = 'grid';
-
-        // --- Speech Synthesis State ---
         let utterance = null;
         let isSpeaking = false;
         let arabicVoice = null;
         
-        // --- Data Fetching ---
         const fetchMasterList = () => fetch('./data/books.json')
             .then(res => {
-                if (!res.ok) {
-                    console.error(`Server responded with status: ${res.status} for books.json`);
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-                return res.json().catch(parseErr => {
-                    console.error("Failed to parse books.json. Please check for syntax errors (e.g., trailing commas).", parseErr);
-                    throw new Error("JSON parsing error");
-                });
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
             })
             .catch(err => { 
-                console.error("Could not load master list. Ensure http-server is running and data/books.json is accessible and valid.", err);
+                console.error("Could not load master list:", err);
                 return [];
             });
         
         async function fetchBookDetails(bookInfo) {
             try {
-                if (bookInfo.parts && Array.isArray(bookInfo.parts) && bookInfo.parts.length > 0) {
-                    const allPartsData = [];
-                    for (let i = 0; i < bookInfo.parts.length; i++) {
-                        const partFile = bookInfo.parts[i];
-                         showLoader(true, `جاري تحميل الجزء ${i + 1} من ${bookInfo.parts.length}...`);
-                        const res = await fetch(`./data/${partFile}`);
-                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${partFile}`);
-                        const partData = await res.json().catch(parseErr => {
-                            console.error(`Failed to parse ${partFile}.`, parseErr);
-                            throw new Error(`JSON parsing error in ${partFile}`);
-                        });
-                        allPartsData.push(partData);
-                    }
-
-                    const combinedVolumes = allPartsData.reduce((acc, currentPart) => {
-                        if (currentPart && currentPart.volumes && Array.isArray(currentPart.volumes)) {
-                            return acc.concat(currentPart.volumes);
-                        }
-                        return acc;
-                    }, []);
-                    
+                if (bookInfo.parts && bookInfo.parts.length > 0) {
+                     showLoader(true, `جاري تحميل ${bookInfo.parts.length} أجزاء من كتاب ${bookInfo.title}...`);
+                    const fetchPromises = bookInfo.parts.map(partFile => 
+                        fetch(`./data/${partFile}`).then(res => res.ok ? res.json() : Promise.reject(`Failed to load ${partFile}`))
+                    );
+                    const allPartsData = await Promise.all(fetchPromises);
+                    const combinedVolumes = allPartsData.flat().map(part => part.volumes).flat();
                     return { volumes: combinedVolumes };
-
                 } else {
                     showLoader(true, `جاري تحميل الكتاب...`);
                     const res = await fetch(`./data/book_${bookInfo.id}.json`);
                     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    return await res.json().catch(parseErr => {
-                        console.error(`Failed to parse book_${bookInfo.id}.json.`, parseErr);
-                        throw new Error(`JSON parsing error in book_${bookInfo.id}.json`);
-                    });
+                    return await res.json();
                 }
             } catch (err) {
                 console.error(`Error fetching details for book ID ${bookInfo.id}:`, err);
@@ -329,31 +252,24 @@
             }
         }
 
-
-        // --- Utility Functions ---
         const showLoader = (show, text = '') => {
-            const existingText = loadingOverlay.querySelector('p');
-            if (existingText) {
-                loadingOverlay.removeChild(existingText);
-            }
+            const loaderDiv = loadingOverlay.querySelector('.loader');
+            let textDiv = loadingOverlay.querySelector('p');
             if (show) {
-                if (text) {
-                    const p = document.createElement('p');
-                    p.className = 'text-yellow-400 mt-4 text-center';
-                    p.textContent = text;
-                    loadingOverlay.appendChild(p);
+                if (!textDiv) {
+                    textDiv = document.createElement('p');
+                    textDiv.className = 'text-yellow-400 mt-4 text-center';
+                    loadingOverlay.appendChild(textDiv);
                 }
+                textDiv.textContent = text;
                 loadingOverlay.style.display = 'flex';
             } else {
                 loadingOverlay.style.display = 'none';
             }
         };
-
-        // --- Local Storage Management ---
         const getBookmarks = () => JSON.parse(localStorage.getItem('sawarim_bookmarks_v3')) || { savedBooks: [], pageProgress: {}, pageNotes: [] };
         const saveBookmarks = (bookmarks) => localStorage.setItem('sawarim_bookmarks_v3', JSON.stringify(bookmarks));
         
-        // --- Speech Synthesis Functions ---
         function loadAndFindArabicVoice() {
             if (!('speechSynthesis' in window)) return;
             const setVoice = () => {
@@ -382,13 +298,12 @@
             pauseIcon.classList.toggle('hidden', !isSpeaking);
         }
 
-        // --- Reader Core Functions ---
         function closeReader() {
             stopSpeech();
             readerView.classList.add('hidden');
             mainView.classList.remove('hidden');
             document.body.style.overflow = 'auto';
-            history.pushState("", document.title, window.location.pathname + window.location.search);
+            history.pushState("", document.title, window.location.pathname);
         }
 
         function openReader(bookInfo, volumes, volumeIndex, pageNumber = null) {
@@ -401,13 +316,9 @@
             const volume = volumes[currentVolumeIndex];
             bookPages = volume.content;
 
-            const readerBookTitle = readerView.querySelector('#reader-book-title');
-            const volumeTitleFooter = readerView.querySelector('#volume-title-footer');
-            const readerContent = readerView.querySelector('#reader-content-primary');
-
-            readerBookTitle.textContent = bookInfo.title;
-            volumeTitleFooter.textContent = volume.volumeTitle;
-            readerContent.style.fontSize = `${currentFontSize}px`;
+            readerView.querySelector('#reader-book-title').textContent = bookInfo.title;
+            readerView.querySelector('#volume-title-footer').textContent = volume.volumeTitle;
+            readerView.querySelector('#reader-content-primary').style.fontSize = `${currentFontSize}px`;
             
             const bookmarks = getBookmarks();
             const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
@@ -452,46 +363,33 @@
             });
         }
 
-
         function displayCurrentPage() {
             stopSpeech();
             if (!bookPages || bookPages.length === 0) return;
-
-            const readerContent = readerView.querySelector('#reader-content-primary');
-            const pageJumpInput = readerView.querySelector('#page-jump-input');
-            const totalPagesFooter = readerView.querySelector('#total-pages-footer');
-            const prevPageBtn = readerView.querySelector('#prev-page-btn');
-            const nextPageBtn = readerView.querySelector('#next-page-btn');
-
             const currentPageData = bookPages[currentPageIndex];
             if (!currentPageData) return;
 
-            readerContent.innerHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${currentPageData.chapter || ''}</h4><p>${currentPageData.text.replace(/\n/g, '<br>')}</p>`;
-            readerContent.scrollTop = 0;
-            pageJumpInput.value = currentPageData.pageNumber;
-            const lastPage = bookPages.length > 0 ? bookPages[bookPages.length - 1].pageNumber : 0;
-            totalPagesFooter.textContent = `من ${lastPage}`;
-            pageJumpInput.max = lastPage;
+            readerView.querySelector('#reader-content-primary').innerHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${currentPageData.chapter || ''}</h4><p>${currentPageData.text.replace(/\n/g, '<br>')}</p>`;
+            readerView.querySelector('#reader-content-primary').scrollTop = 0;
+            readerView.querySelector('#page-jump-input').value = currentPageData.pageNumber;
+            const lastPage = bookPages[bookPages.length - 1]?.pageNumber || 0;
+            readerView.querySelector('#total-pages-footer').textContent = `من ${lastPage}`;
+            readerView.querySelector('#page-jump-input').max = lastPage;
             
-            prevPageBtn.disabled = currentPageIndex === 0;
-            prevPageBtn.classList.toggle('disabled-btn', currentPageIndex === 0);
-            nextPageBtn.disabled = currentPageIndex === bookPages.length - 1;
-            nextPageBtn.classList.toggle('disabled-btn', currentPageIndex === bookPages.length - 1);
+            readerView.querySelector('#prev-page-btn').disabled = currentPageIndex === 0;
+            readerView.querySelector('#prev-page-btn').classList.toggle('disabled-btn', currentPageIndex === 0);
+            readerView.querySelector('#next-page-btn').disabled = currentPageIndex === bookPages.length - 1;
+            readerView.querySelector('#next-page-btn').classList.toggle('disabled-btn', currentPageIndex === bookPages.length - 1);
             
-            const hash = `#/book/${currentBookId}/volume/${currentVolumeIndex}/page/${currentPageData.pageNumber}`;
-            history.replaceState(null, '', hash);
+            history.replaceState(null, '', `#/book/${currentBookId}/volume/${currentVolumeIndex}/page/${currentPageData.pageNumber}`);
             
             let bookmarks = getBookmarks();
-            const bookmarkKey = `${currentBookId}-${currentVolumeIndex}`;
-            bookmarks.pageProgress[bookmarkKey] = currentPageData.pageNumber;
+            bookmarks.pageProgress[`${currentBookId}-${currentVolumeIndex}`] = currentPageData.pageNumber;
             saveBookmarks(bookmarks);
         }
 
         function handleSpeech() {
-            if (!('speechSynthesis' in window)) {
-                alert('عذراً، متصفحك لا يدعم ميزة الاستماع الصوتي.');
-                return;
-            }
+            if (!('speechSynthesis' in window)) return;
             if (isSpeaking) {
                 speechSynthesis.pause();
                 isSpeaking = false;
@@ -499,10 +397,7 @@
                 if (speechSynthesis.paused) {
                     speechSynthesis.resume();
                 } else {
-                    if (!arabicVoice) {
-                        alert('عذراً، لم يتم العثور على صوت عربي مثبت على جهازك أو متصفحك.');
-                        return;
-                    }
+                    if (!arabicVoice) return;
                     const textToSpeak = readerView.querySelector('#reader-content-primary').innerText;
                     utterance = new SpeechSynthesisUtterance(textToSpeak);
                     utterance.voice = arabicVoice;
@@ -518,15 +413,13 @@
         }
 
         function toggleFullScreen() {
-            const elem = document.getElementById('reader-view');
             if (!document.fullscreenElement) {
-                elem.requestFullscreen().catch(err => alert(`خطأ في تفعيل وضع ملء الشاشة: ${err.message}`));
+                readerView.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
             } else {
                 document.exitFullscreen();
             }
         }
         
-        // --- Main View Functions ---
         function sortAndRender(booksToRender = allBooks) {
             const sortValue = sortSelect.value;
             let sortedBooks = [...booksToRender];
@@ -539,60 +432,29 @@
         function renderBooks(booksToRender) {
             booksContainer.innerHTML = '';
             noResults.classList.toggle('hidden', booksToRender.length > 0);
-
             booksContainer.className = currentView === 'grid' 
                 ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6'
                 : 'flex flex-col gap-4';
-
             const bookmarks = getBookmarks();
-            
             booksToRender.forEach(book => {
                 const isSaved = bookmarks.savedBooks.includes(book.id);
-                
                 const wrapper = document.createElement('div');
                 wrapper.className = 'book-card-wrapper';
-
                 const bookElement = document.createElement('div');
                 bookElement.dataset.bookId = book.id;
-
                 if (currentView === 'grid') {
                     bookElement.className = "bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer group h-full flex flex-col";
-                    bookElement.innerHTML = `
-                        <div class="relative">
-                            <img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';">
-                            <div class="absolute top-2 right-2"><button class="save-book-btn p-2 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700 bg-opacity-50'} text-white" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button></div>
-                            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"><span class="text-white text-xl font-bold">اقرأ الآن</span></div>
-                        </div>
-                        <div class="p-4 flex-grow">
-                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
-                            <p class="text-gray-400 text-sm">${book.author}</p>
-                            ${book.subtitle ? `<p class="text-yellow-500 text-xs mt-2">${book.subtitle}</p>` : ''}
-                        </div>
-                    `;
-                } else { // List view
+                    bookElement.innerHTML = `<div class="relative"><img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';"><div class="absolute top-2 right-2"><button class="save-book-btn p-2 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700 bg-opacity-50'} text-white" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button></div><div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"><span class="text-white text-xl font-bold">اقرأ الآن</span></div></div><div class="p-4 flex-grow"><h3 class="font-bold text-lg text-white">${book.title}</h3><p class="text-gray-400 text-sm">${book.author}</p>${book.subtitle ? `<p class="text-yellow-500 text-xs mt-2">${book.subtitle}</p>` : ''}</div>`;
+                } else {
                     bookElement.className = "bg-gray-800 rounded-lg shadow-lg flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-700 transition-colors";
-                    bookElement.innerHTML = `
-                        <img src="${book.cover}" alt="${book.title}" class="w-20 h-28 object-cover rounded-md flex-shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/80x112/111827/FFFFFF?text=Error';">
-                        <div class="flex-grow">
-                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
-                            <p class="text-gray-400 text-sm">${book.author}</p>
-                            ${book.subtitle ? `<p class="text-yellow-500 text-xs mt-1">${book.subtitle}</p>` : ''}
-                        </div>
-                        <button class="save-book-btn p-3 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700'} text-white self-start" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button>
-                    `;
+                    bookElement.innerHTML = `<img src="${book.cover}" alt="${book.title}" class="w-20 h-28 object-cover rounded-md flex-shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/80x112/111827/FFFFFF?text=Error';"><div class="flex-grow"><h3 class="font-bold text-lg text-white">${book.title}</h3><p class="text-gray-400 text-sm">${book.author}</p>${book.subtitle ? `<p class="text-yellow-500 text-xs mt-1">${book.subtitle}</p>` : ''}</div><button class="save-book-btn p-3 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700'} text-white self-start" data-book-id="${book.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" /></svg></button>`;
                 }
-
                 const tooltipElement = document.createElement('div');
                 tooltipElement.className = 'book-tooltip';
                 tooltipElement.textContent = book.description || 'لا يوجد وصف متاح.';
-                
-                wrapper.appendChild(bookElement);
-                wrapper.appendChild(tooltipElement);
+                wrapper.append(bookElement, tooltipElement);
                 booksContainer.appendChild(wrapper);
-
-                bookElement.addEventListener('click', (e) => {
-                    if (!e.target.closest('.save-book-btn')) handleBookClick(book.id);
-                });
+                bookElement.addEventListener('click', (e) => !e.target.closest('.save-book-btn') && handleBookClick(book.id));
                 bookElement.querySelector('.save-book-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     toggleSaveBook(book.id);
@@ -603,11 +465,8 @@
         function toggleSaveBook(bookId) {
             let bookmarks = getBookmarks();
             const index = bookmarks.savedBooks.indexOf(bookId);
-            if (index > -1) {
-                bookmarks.savedBooks.splice(index, 1);
-            } else {
-                bookmarks.savedBooks.push(bookId);
-            }
+            if (index > -1) bookmarks.savedBooks.splice(index, 1);
+            else bookmarks.savedBooks.push(bookId);
             saveBookmarks(bookmarks);
             sortAndRender();
         }
@@ -632,16 +491,7 @@
 
         function openVolumeSelector(bookInfo, volumes) {
             const volumesModalContainer = document.getElementById('volumes-modal');
-            volumesModalContainer.innerHTML = `
-                <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
-                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
-                        <h2 class="text-xl font-bold text-white">اختر جزء من: ${bookInfo.title}</h2>
-                        <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                    </div>
-                    <div class="p-4 space-y-2 max-h-96 overflow-y-auto">
-                        ${volumes.map((volume, index) => `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg volume-select-btn" data-index="${index}">${volume.volumeTitle}</button>`).join('')}
-                    </div>
-                </div>`;
+            volumesModalContainer.innerHTML = `<div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col"><div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">اختر جزء من: ${bookInfo.title}</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div><div class="p-4 space-y-2 max-h-96 overflow-y-auto">${volumes.map((volume, index) => `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg volume-select-btn" data-index="${index}">${volume.volumeTitle}</button>`).join('')}</div></div>`;
             volumesModalContainer.style.display = 'flex';
             volumesModalContainer.querySelector('.close-modal-btn').onclick = () => volumesModalContainer.style.display = 'none';
             volumesModalContainer.querySelectorAll('.volume-select-btn').forEach(btn => {
@@ -655,51 +505,35 @@
         function openToc() {
             const tocModalContainer = document.getElementById('toc-modal');
             const chapterMap = new Map();
-            if (bookPages && Array.isArray(bookPages)) {
-                bookPages.forEach((page, index) => {
-                    const chapterTitle = page.chapter?.trim();
-                    if (chapterTitle && !chapterMap.has(chapterTitle)) {
-                        chapterMap.set(chapterTitle, index);
-                    }
-                });
-            }
-
-            tocModalContainer.innerHTML = `
-                <div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
-                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
-                        <h2 class="text-xl font-bold text-white">فهرس الأبواب</h2>
-                        <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                    </div>
-                    <div class="p-4 space-y-2 overflow-y-auto"></div>
-                </div>`;
-                
+            bookPages?.forEach((page, index) => {
+                const chapterTitle = page.chapter?.trim();
+                if (chapterTitle && !chapterMap.has(chapterTitle)) {
+                    chapterMap.set(chapterTitle, index);
+                }
+            });
+            tocModalContainer.innerHTML = `<div class="bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]"><div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">فهرس الأبواب</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div><div class="p-4 space-y-2 overflow-y-auto"></div></div>`;
             const tocList = tocModalContainer.querySelector('.overflow-y-auto');
-            
             if (chapterMap.size > 0) {
-                for (const [chapter, index] of chapterMap.entries()) {
-                    const chapterBtn = document.createElement('button');
-                    chapterBtn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg transition-colors duration-200';
-                    chapterBtn.textContent = chapter;
-                    chapterBtn.onclick = () => {
+                chapterMap.forEach((index, chapter) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg';
+                    btn.textContent = chapter;
+                    btn.onclick = () => {
                         currentPageIndex = index;
                         displayCurrentPage();
                         tocModalContainer.style.display = 'none';
                     };
-                    tocList.appendChild(chapterBtn);
-                }
+                    tocList.appendChild(btn);
+                });
             } else {
                 tocList.innerHTML = '<p class="text-gray-400 text-center">لا يوجد فهرس لهذا الجزء.</p>';
             }
-            
             tocModalContainer.style.display = 'flex';
             tocModalContainer.querySelector('.close-modal-btn').onclick = () => tocModalContainer.style.display = 'none';
         }
         
-        // --- Search Functions ---
         function handleSimpleSearch() {
             const query = searchInput.value.toLowerCase().trim();
-            searchResultsView.classList.add('hidden');
-            booksContainerWrapper.classList.remove('hidden');
             const filteredBooks = allBooks.filter(book => 
                 book.title.toLowerCase().includes(query) || 
                 book.author.toLowerCase().includes(query)
@@ -707,214 +541,48 @@
             sortAndRender(filteredBooks);
         }
 
-        function handleAdvancedSearch() {
-            const query = searchInput.value.trim();
-            if (!query) {
-                alert("الرجاء إدخال نص للبحث.");
-                return;
-            }
-            if (!isIndexBuilt) {
-                alert("الفهرسة لا تزال قيد التقدم. الرجاء الانتظار لحظة ثم المحاولة مرة أخرى.");
-                return;
-            }
-
-            showLoader(true, 'جاري البحث...');
-            
-            setTimeout(() => {
-                const results = [];
-                const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-
-                searchableContent.forEach(item => {
-                    let match;
-                    while ((match = regex.exec(item.text)) !== null) {
-                        const snippet = createSnippet(item.text, match.index, match[0].length);
-                        results.push({ ...item, snippet });
-                    }
-                });
-
-                displayAdvancedSearchResults(results, query);
-                showLoader(false);
-            }, 50);
-        }
-        
-        function createSnippet(text, index, matchLength, contextLength = 50) {
-            const start = Math.max(0, index - contextLength);
-            const end = Math.min(text.length, index + matchLength + contextLength);
-            let snippet = text.substring(start, end);
-            
-            const matchedText = text.substring(index, index + matchLength);
-            
-            if (start > 0) snippet = "..." + snippet;
-            if (end < text.length) snippet = snippet + "...";
-
-            const highlightedSnippet = snippet.replace(new RegExp(matchedText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), `<mark>${matchedText}</mark>`);
-
-            return highlightedSnippet;
-        }
-
-        function displayAdvancedSearchResults(results, query) {
-            booksContainerWrapper.classList.add('hidden');
-            searchResultsView.classList.remove('hidden');
-            searchResultsView.innerHTML = '';
-
-            const header = document.createElement('div');
-            header.className = 'flex justify-between items-center mb-4';
-            header.innerHTML = `
-                <h2 class="text-xl font-bold text-white">نتائج البحث عن: "${query}" (${results.length} نتيجة)</h2>
-                <button id="back-to-library-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">العودة للمكتبة</button>
-            `;
-            searchResultsView.appendChild(header);
-
-            document.getElementById('back-to-library-btn').onclick = () => {
-                searchResultsView.classList.add('hidden');
-                booksContainerWrapper.classList.remove('hidden');
-                searchInput.value = '';
-                sortAndRender();
-            };
-
-            if (results.length === 0) {
-                searchResultsView.innerHTML += '<p class="text-gray-400 text-center">لم يتم العثور على نتائج في محتوى الكتب.</p>';
-                return;
-            }
-
-            const resultsContainer = document.createElement('div');
-            resultsContainer.className = 'space-y-4';
-            results.forEach(res => {
-                const resultEl = document.createElement('div');
-                resultEl.className = 'bg-gray-800 p-4 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors';
-                resultEl.innerHTML = `
-                    <h3 class="font-bold text-yellow-400">${res.bookTitle}</h3>
-                    <p class="text-sm text-gray-400 mb-2">${res.volumeTitle} - صفحة ${res.pageNumber}</p>
-                    <p class="text-gray-300">${res.snippet}</p>
-                `;
-                resultEl.onclick = () => handleBookClick(res.bookId, res.volumeIndex, res.pageNumber);
-                resultsContainer.appendChild(resultEl);
-            });
-            searchResultsView.appendChild(resultsContainer);
-        }
-
-
-        // --- Bookmarking Functions ---
-        function showBookmarkNoteModal(pageData) {
-            if (!pageData) return;
-            const modalContainer = document.getElementById('bookmark-note-modal');
-            modalContainer.innerHTML = `
-                <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col">
-                    <div class="p-4 border-b border-gray-700">
-                        <h2 class="text-xl font-bold text-white">إضافة ملاحظة للعلامة المرجعية</h2>
-                        <p class="text-sm text-gray-400">صفحة ${pageData.pageNumber} - ${pageData.chapter || 'بلا عنوان'}</p>
-                    </div>
-                    <div class="p-4">
-                        <textarea id="bookmark-note-input" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white" rows="4" placeholder="اكتب ملاحظتك هنا..."></textarea>
-                    </div>
-                    <div class="flex justify-end p-4 border-t border-gray-700 space-x-2 space-x-reverse">
-                        <button id="cancel-bookmark-note" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">إلغاء</button>
-                        <button id="save-bookmark-note" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">حفظ</button>
-                    </div>
-                </div>
-            `;
-            modalContainer.style.display = 'flex';
-
-            document.getElementById('save-bookmark-note').onclick = () => {
-                const note = document.getElementById('bookmark-note-input').value;
-                let bookmarks = getBookmarks();
-                bookmarks.pageNotes.push({
-                    id: Date.now(),
-                    bookId: currentBookId,
-                    volumeIndex: currentVolumeIndex,
-                    pageNumber: pageData.pageNumber,
-                    chapter: pageData.chapter,
-                    note: note,
-                    date: new Date().toISOString()
-                });
-                saveBookmarks(bookmarks);
-                modalContainer.style.display = 'none';
-                alert('تم حفظ العلامة المرجعية بنجاح!');
-            };
-
-            document.getElementById('cancel-bookmark-note').onclick = () => {
-                modalContainer.style.display = 'none';
-            };
-        }
-
         function showBookmarksModal() {
             const modal = document.getElementById('bookmarks-modal');
             modal.style.display = 'flex';
-
             const renderSavedBooks = () => {
-                const bookmarks = getBookmarks();
+                const { savedBooks } = getBookmarks();
                 const container = document.getElementById('saved-books-tab');
-                container.innerHTML = '';
-                if (bookmarks.savedBooks.length === 0) {
-                    container.innerHTML = '<p class="text-gray-400 text-center">لم تقم بحفظ أي كتب بعد.</p>';
-                    return;
-                }
-                bookmarks.savedBooks.forEach(bookId => {
+                container.innerHTML = savedBooks.length === 0 ? '<p class="text-gray-400 text-center">لم تقم بحفظ أي كتب بعد.</p>' : '';
+                savedBooks.forEach(bookId => {
                     const book = allBooks.find(b => b.id === bookId);
                     if (book) {
                         const elem = document.createElement('div');
                         elem.className = 'bg-gray-700 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-600';
-                        elem.innerHTML = `
-                            <div>
-                                <h4 class="font-bold text-white">${book.title}</h4>
-                                <p class="text-sm text-gray-400">${book.author}</p>
-                            </div>
-                            <button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إزالة</button>
-                        `;
-                        elem.onclick = (e) => {
-                            if (!e.target.closest('.remove-saved-book-btn')) {
-                                modal.style.display = 'none';
-                                handleBookClick(bookId);
-                            }
-                        };
+                        elem.innerHTML = `<div><h4 class="font-bold text-white">${book.title}</h4><p class="text-sm text-gray-400">${book.author}</p></div><button class="text-red-500 hover:text-red-400 remove-saved-book-btn" data-id="${bookId}">إزالة</button>`;
+                        elem.onclick = (e) => { if (!e.target.closest('.remove-saved-book-btn')) { modal.style.display = 'none'; handleBookClick(bookId); }};
                         container.appendChild(elem);
                     }
                 });
-                 container.querySelectorAll('.remove-saved-book-btn').forEach(btn => {
+                container.querySelectorAll('.remove-saved-book-btn').forEach(btn => {
                     btn.onclick = (e) => {
                         e.stopPropagation();
                         let bookmarks = getBookmarks();
                         bookmarks.savedBooks = bookmarks.savedBooks.filter(id => id != btn.dataset.id);
                         saveBookmarks(bookmarks);
                         renderSavedBooks();
-                        sortAndRender(); // Update main view
+                        sortAndRender();
                     };
                 });
             };
-
             const renderPageNotes = () => {
-                const bookmarks = getBookmarks();
+                const { pageNotes } = getBookmarks();
                 const container = document.getElementById('page-notes-tab');
-                container.innerHTML = '';
-                if (bookmarks.pageNotes.length === 0) {
-                    container.innerHTML = '<p class="text-gray-400 text-center">لم تقم بحفظ أي علامات مرجعية للصفحات بعد.</p>';
-                    return;
-                }
-                bookmarks.pageNotes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(note => {
+                container.innerHTML = pageNotes.length === 0 ? '<p class="text-gray-400 text-center">لم تقم بحفظ أي علامات مرجعية.</p>' : '';
+                pageNotes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(note => {
                     const book = allBooks.find(b => b.id === note.bookId);
                     if (book) {
-                         const elem = document.createElement('div');
+                        const elem = document.createElement('div');
                         elem.className = 'bg-gray-700 p-3 rounded-lg cursor-pointer hover:bg-gray-600';
-                        elem.innerHTML = `
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h4 class="font-bold text-white">${book.title}</h4>
-                                    <p class="text-sm text-yellow-400">صفحة ${note.pageNumber} - ${note.chapter || ''}</p>
-                                    <p class="text-gray-300 mt-2 whitespace-pre-wrap">${note.note || '<i>لا توجد ملاحظة</i>'}</p>
-                                </div>
-                                <button class="text-red-500 hover:text-red-400 remove-page-note-btn flex-shrink-0 ml-4" data-id="${note.id}">إزالة</button>
-                            </div>
-                        `;
-                        elem.onclick = (e) => {
-                             if (!e.target.closest('.remove-page-note-btn')) {
-                                modal.style.display = 'none';
-                                handleBookClick(note.bookId, note.volumeIndex, note.pageNumber);
-                            }
-                        };
+                        elem.innerHTML = `<div class="flex justify-between items-start"><div><h4 class="font-bold text-white">${book.title}</h4><p class="text-sm text-yellow-400">صفحة ${note.pageNumber} - ${note.chapter || ''}</p><p class="text-gray-300 mt-2 whitespace-pre-wrap">${note.note || '<i>لا توجد ملاحظة</i>'}</p></div><button class="text-red-500 hover:text-red-400 remove-page-note-btn flex-shrink-0 ml-4" data-id="${note.id}">إزالة</button></div>`;
+                        elem.onclick = (e) => { if (!e.target.closest('.remove-page-note-btn')) { modal.style.display = 'none'; handleBookClick(note.bookId, note.volumeIndex, note.pageNumber); }};
                         container.appendChild(elem);
                     }
                 });
-
                 container.querySelectorAll('.remove-page-note-btn').forEach(btn => {
                     btn.onclick = (e) => {
                         e.stopPropagation();
@@ -925,10 +593,8 @@
                     };
                 });
             };
-
             renderSavedBooks();
             renderPageNotes();
-
             modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
             modal.querySelectorAll('.bookmark-tab-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -940,143 +606,55 @@
             });
         }
 
-        // --- App Initialization ---
-        async function buildSearchIndex() {
-            const searchContentWrapper = document.getElementById('search-content-wrapper');
-            const searchContentCheckbox = document.getElementById('search-content-checkbox');
-            const searchContentLabel = document.getElementById('search-content-label');
-            const searchContentTooltip = document.getElementById('search-content-tooltip');
-            
-            indexingStatus.classList.remove('hidden');
-            indexingStatus.classList.add('flex');
-            searchContentCheckbox.disabled = true;
-            searchContentLabel.classList.add('opacity-50', 'cursor-not-allowed');
-
-            searchContentWrapper.onmouseenter = () => {
-                if(searchContentCheckbox.disabled) searchContentTooltip.classList.remove('hidden');
-            };
-            searchContentWrapper.onmouseleave = () => {
-                if(searchContentCheckbox.disabled) searchContentTooltip.classList.add('hidden');
-            };
-            
-            const detailPromises = allBooks.map(book => fetchBookDetails(book));
-            const allDetails = await Promise.all(detailPromises);
-
-            let tempIndex = [];
-            allDetails.forEach((detail, bookIndex) => {
-                if (detail && detail.volumes) {
-                    const bookInfo = allBooks[bookIndex];
-                    detail.volumes.forEach((volume, volIdx) => {
-                        if (volume.content) {
-                            volume.content.forEach(page => {
-                                tempIndex.push({
-                                    bookId: bookInfo.id,
-                                    bookTitle: bookInfo.title,
-                                    author: bookInfo.author,
-                                    volumeIndex: volIdx,
-                                    volumeTitle: volume.volumeTitle,
-                                    pageNumber: page.pageNumber,
-                                    chapter: page.chapter,
-                                    text: page.text
-                                });
-                            });
-                        }
-                    });
-                }
-            });
-            searchableContent = tempIndex;
-            isIndexBuilt = true;
-            
-            indexingStatus.classList.add('hidden');
-            indexingStatus.classList.remove('flex');
-            searchContentCheckbox.disabled = false;
-            searchContentLabel.classList.remove('opacity-50', 'cursor-not-allowed');
-            searchContentTooltip.classList.add('hidden');
-            console.log(`Search index built with ${searchableContent.length} pages.`);
-        }
-
         async function handleUrlHash() {
             const hash = window.location.hash;
             if (!hash.startsWith('#/book/')) return;
-
-            const parts = hash.split('/');
-            if (parts.length < 7) return;
-
-            const bookId = parts[2];
-            const volumeIndex = parts[4];
-            const pageNumber = parts[6];
-
-            if (bookId && volumeIndex !== undefined && pageNumber) {
+            const [, , bookId, , volumeIndex, , pageNumber] = hash.split('/');
+            if (bookId && volumeIndex && pageNumber) {
                 if (allBooks.length === 0) {
-                    allBooks = await fetchMasterList();
+                   await initializeApp(false); // Fetch books but don't re-render
                 }
-                handleBookClick(bookId, volumeIndex, pageNumber);
+                handleBookClick(parseInt(bookId), parseInt(volumeIndex), parseInt(pageNumber));
             }
         }
 
-        async function initializeApp() {
+        async function initializeApp(shouldRender=true) {
             showLoader(true, "جاري تحميل قائمة الكتب...");
             allBooks = await fetchMasterList();
             showLoader(false);
-            
             if (allBooks.length === 0) {
-                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب. يرجى التأكد من أن الخادم المحلي يعمل وأن ملف `data/books.json` موجود ولا يحتوي على أخطاء. افتح لوحة التحكم (F12) لمزيد من التفاصيل.</p>';
+                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب.</p>';
                 return;
             }
-            
+            if(shouldRender){
+                sortAndRender();
+            }
             loadAndFindArabicVoice();
-            
-            sortAndRender();
-            
-            await handleUrlHash();
-            
-            // The search index will now build in the background without blocking the UI
-            setTimeout(buildSearchIndex, 500); 
-
-            // Event Listeners
-            searchBtn.addEventListener('click', () => {
-                if (searchContentCheckbox.checked) {
-                    if (!isIndexBuilt) {
-                        alert('يرجى الانتظار حتى تكتمل فهرسة محتوى الكتب قبل استخدام هذه الميزة.');
-                        return;
-                    }
-                    handleAdvancedSearch();
-                } else {
-                    handleSimpleSearch();
-                }
-            });
-            searchInput.addEventListener('input', () => {
-                searchInput.style.height = 'auto';
-                searchInput.style.height = (searchInput.scrollHeight) + 'px';
-            });
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    searchBtn.click();
-                }
-            });
-            searchInput.addEventListener('keyup', (e) => {
-                if (!searchContentCheckbox.checked && searchInput.value.trim() === '') {
-                    handleSimpleSearch();
-                }
-            });
-            sortSelect.addEventListener('change', () => sortAndRender());
-            showBookmarksBtn.addEventListener('click', showBookmarksModal);
-            gridViewBtn.addEventListener('click', () => {
-                currentView = 'grid';
-                gridViewBtn.classList.add('active');
-                listViewBtn.classList.remove('active');
-                sortAndRender();
-            });
-            listViewBtn.addEventListener('click', () => {
-                currentView = 'list';
-                listViewBtn.classList.add('active');
-                gridViewBtn.classList.remove('active');
-                sortAndRender();
-            });
         }
 
-        initializeApp();
+        // --- Event Listeners ---
+        searchBtn.addEventListener('click', handleSimpleSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSimpleSearch();
+            }
+        });
+        searchInput.addEventListener('keyup', () => {
+            if (searchInput.value.trim() === '') handleSimpleSearch();
+        });
+        sortSelect.addEventListener('change', () => sortAndRender());
+        showBookmarksBtn.addEventListener('click', showBookmarksModal);
+        gridViewBtn.addEventListener('click', () => { currentView = 'grid'; gridViewBtn.classList.add('active'); listViewBtn.classList.remove('active'); sortAndRender(); });
+        listViewBtn.addEventListener('click', () => { currentView = 'list'; listViewBtn.classList.add('active'); gridViewBtn.classList.remove('active'); sortAndRender(); });
+        window.addEventListener('hashchange', handleUrlHash, false);
+
+        // --- Initial Load ---
+        (async () => {
+            await initializeApp();
+            await handleUrlHash();
+        })();
+
     });
     </script>
 </body>
