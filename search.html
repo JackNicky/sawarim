@@ -45,7 +45,9 @@
         <div id="initial-loading-view" class="text-center py-10">
              <div class="loader mx-auto"></div>
              <p id="indexing-status" class="mt-4 text-yellow-400">جاري تجهيز فهرس البحث، يرجى الانتظار...</p>
-             <progress id="indexing-progress" class="w-full h-2 mt-2" value="0" max="100"></progress>
+             <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
+                <div id="indexing-progress" class="bg-yellow-500 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
         </div>
 
         <div id="search-view" class="hidden">
@@ -90,37 +92,40 @@
                     return;
                 }
 
-                indexingProgress.max = allBooks.length;
-                let booksProcessed = 0;
+                let totalFilesToFetch = 0;
+                allBooks.forEach(book => {
+                    totalFilesToFetch += (book.parts ? book.parts.length : 1);
+                });
+                let filesProcessed = 0;
 
                 for (const book of allBooks) {
-                    let bookDetails;
                     if (book.parts && book.parts.length > 0) {
-                        const partPromises = book.parts.map(partFile => fetchBookPart(partFile));
-                        const allPartsData = await Promise.all(partPromises);
-                        const combinedVolumes = allPartsData.flat().filter(Boolean).map(part => part.volumes).flat();
-                        bookDetails = { volumes: combinedVolumes };
+                        for (const part of book.parts) {
+                            const partData = await fetchBookPart(part.file);
+                            if (partData && partData.volumes) {
+                                partData.volumes.forEach((volume, volIdx) => {
+                                    volume.content?.forEach(page => {
+                                        searchableContent.push({ bookId: book.id, bookTitle: book.title, volumeIndex: volIdx, volumeTitle: volume.volumeTitle, pageNumber: page.pageNumber, chapter: page.chapter, text: page.text, absoluteVolumeNumber: volume.volumeNumber });
+                                    });
+                                });
+                            }
+                            filesProcessed++;
+                            indexingProgress.style.width = `${(filesProcessed / totalFilesToFetch) * 100}%`;
+                            indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
+                        }
                     } else {
-                        bookDetails = await fetchBookPart(`book_${book.id}.json`);
-                    }
-                    
-                    if (bookDetails && bookDetails.volumes) {
-                        bookDetails.volumes.forEach((volume, volIdx) => {
-                            volume.content?.forEach(page => {
-                                searchableContent.push({
-                                    bookId: book.id,
-                                    bookTitle: book.title,
-                                    volumeIndex: volIdx,
-                                    volumeTitle: volume.volumeTitle,
-                                    pageNumber: page.pageNumber,
-                                    chapter: page.chapter,
-                                    text: page.text
+                        const bookDetails = await fetchBookPart(`book_${book.id}.json`);
+                        if (bookDetails && bookDetails.volumes) {
+                            bookDetails.volumes.forEach((volume, volIdx) => {
+                                volume.content?.forEach(page => {
+                                    searchableContent.push({ bookId: book.id, bookTitle: book.title, volumeIndex: volIdx, volumeTitle: volume.volumeTitle, pageNumber: page.pageNumber, chapter: page.chapter, text: page.text, absoluteVolumeNumber: volume.volumeNumber });
                                 });
                             });
-                        });
+                        }
+                        filesProcessed++;
+                        indexingProgress.style.width = `${(filesProcessed / totalFilesToFetch) * 100}%`;
+                        indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
                     }
-                    booksProcessed++;
-                    indexingProgress.value = booksProcessed;
                 }
 
                 isIndexBuilt = true;
@@ -144,25 +149,29 @@
                 const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
 
                 searchableContent.forEach(item => {
-                    let match;
-                    while ((match = regex.exec(item.text)) !== null) {
-                        const snippet = createSnippet(item.text, match.index, match[0].length);
+                    if (item.text.match(regex)) {
+                        const snippet = createSnippet(item.text, query);
                         results.push({ ...item, snippet });
-                        break; // Show only the first match per page to avoid clutter
                     }
                 });
                 
                 displayAdvancedSearchResults(results, query);
             }
             
-            function createSnippet(text, index, matchLength, contextLength = 60) {
+            function createSnippet(text, query, contextLength = 60) {
+                const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
+                const match = text.match(regex);
+                if (!match) return text.substring(0, contextLength * 2);
+
+                const index = match.index;
+                const matchLength = match[0].length;
                 const start = Math.max(0, index - contextLength);
                 const end = Math.min(text.length, index + matchLength + contextLength);
                 let snippet = text.substring(start, end);
                 if (start > 0) snippet = "..." + snippet;
                 if (end < text.length) snippet = snippet + "...";
-                const matchedText = text.substring(index, index + matchLength);
-                return snippet.replace(new RegExp(matchedText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), `<mark>${matchedText}</mark>`);
+
+                return snippet.replace(new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi'), `<mark>$&</mark>`);
             }
 
             function displayAdvancedSearchResults(results, query) {
@@ -181,7 +190,7 @@
                 resultsContainer.className = 'space-y-4';
                 results.forEach(res => {
                     const resultEl = document.createElement('a');
-                    resultEl.href = `index.html#/book/${res.bookId}/volume/${res.volumeIndex}/page/${res.pageNumber}`;
+                    resultEl.href = `index.html#/book/${res.bookId}/volume/${res.absoluteVolumeNumber}/page/${res.pageNumber}`;
                     resultEl.target = "_blank"; // Open in new tab
                     resultEl.className = 'block bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-colors';
                     resultEl.innerHTML = `
@@ -208,3 +217,4 @@
     </script>
 </body>
 </html>
+
