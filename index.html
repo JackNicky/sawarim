@@ -125,13 +125,18 @@
                 <div class="relative flex-grow">
                     <textarea id="search-input" placeholder="ابحث..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="1" style="resize: none;"></textarea>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-4 flex-wrap">
                     <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
-                    <label class="flex items-center gap-2 cursor-pointer text-gray-300">
-                        <input type="checkbox" id="search-content-checkbox" class="form-checkbox bg-gray-700 border-gray-600 text-yellow-500 h-5 w-5 rounded focus:ring-yellow-500">
-                        <span>بحث في المحتوى</span>
-                    </label>
-                    <div id="indexing-status" class="text-xs text-gray-500 hidden">جاري فهرسة الكتب...</div>
+                     <div id="search-content-wrapper" class="relative">
+                        <label id="search-content-label" class="flex items-center gap-2 cursor-pointer text-gray-300">
+                            <input type="checkbox" id="search-content-checkbox" class="form-checkbox bg-gray-700 border-gray-600 text-yellow-500 h-5 w-5 rounded focus:ring-yellow-500">
+                            <span>بحث في المحتوى</span>
+                        </label>
+                        <div id="search-content-tooltip" class="absolute hidden bg-gray-700 text-white text-xs rounded py-1 px-2 -top-8 left-0 whitespace-nowrap">
+                            جاري تجهيز البحث في المحتوى...
+                        </div>
+                    </div>
+                    <div id="indexing-status" class="text-xs text-yellow-400 hidden items-center gap-2"><div class="w-4 h-4 border-2 border-dashed rounded-full animate-spin border-yellow-400"></div><span>جاري فهرسة الكتب للبحث السريع...</span></div>
                 </div>
             </div>
             <div class="flex flex-col md:flex-row gap-4 mb-8 items-center">
@@ -209,7 +214,7 @@
     <div id="bookmark-note-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4"></div>
     <div id="volumes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4"></div>
     <div id="toc-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4"></div>
-    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[70] hidden items-center justify-center"><div class="loader"></div></div>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[70] hidden items-center justify-center flex-col"><div class="loader"></div></div>
     
     <!-- Bookmarks Modal -->
     <div id="bookmarks-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden flex items-center justify-center p-4">
@@ -281,26 +286,23 @@
                 console.error("Could not load master list. Ensure http-server is running and data/books.json is accessible and valid.", err);
                 return [];
             });
-
-        // --- MODIFIED FUNCTION TO HANDLE MULTIPLE PARTS ---
+        
         async function fetchBookDetails(bookInfo) {
             try {
-                // If the book has a 'parts' array, fetch and combine them
                 if (bookInfo.parts && Array.isArray(bookInfo.parts) && bookInfo.parts.length > 0) {
-                    const fetchPromises = bookInfo.parts.map(partFile => 
-                        fetch(`./data/${partFile}`)
-                            .then(res => {
-                                if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${partFile}`);
-                                return res.json().catch(parseErr => {
-                                    console.error(`Failed to parse ${partFile}.`, parseErr);
-                                    throw new Error(`JSON parsing error in ${partFile}`);
-                                });
-                            })
-                    );
+                    const allPartsData = [];
+                    for (let i = 0; i < bookInfo.parts.length; i++) {
+                        const partFile = bookInfo.parts[i];
+                         showLoader(true, `جاري تحميل الجزء ${i + 1} من ${bookInfo.parts.length}...`);
+                        const res = await fetch(`./data/${partFile}`);
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${partFile}`);
+                        const partData = await res.json().catch(parseErr => {
+                            console.error(`Failed to parse ${partFile}.`, parseErr);
+                            throw new Error(`JSON parsing error in ${partFile}`);
+                        });
+                        allPartsData.push(partData);
+                    }
 
-                    const allPartsData = await Promise.all(fetchPromises);
-
-                    // Combine the volumes from all parts into one array
                     const combinedVolumes = allPartsData.reduce((acc, currentPart) => {
                         if (currentPart && currentPart.volumes && Array.isArray(currentPart.volumes)) {
                             return acc.concat(currentPart.volumes);
@@ -311,12 +313,9 @@
                     return { volumes: combinedVolumes };
 
                 } else {
-                    // This is a single-file book, fetch it normally
+                    showLoader(true, `جاري تحميل الكتاب...`);
                     const res = await fetch(`./data/book_${bookInfo.id}.json`);
-                    if (!res.ok) {
-                        console.error(`Server responded with status: ${res.status} for book_${bookInfo.id}.json`);
-                        throw new Error(`HTTP error! status: ${res.status}`);
-                    }
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                     return await res.json().catch(parseErr => {
                         console.error(`Failed to parse book_${bookInfo.id}.json.`, parseErr);
                         throw new Error(`JSON parsing error in book_${bookInfo.id}.json`);
@@ -325,12 +324,29 @@
             } catch (err) {
                 console.error(`Error fetching details for book ID ${bookInfo.id}:`, err);
                 return null;
+            } finally {
+                showLoader(false);
             }
         }
 
+
         // --- Utility Functions ---
-        const showLoader = (show) => {
-            if (loadingOverlay) loadingOverlay.style.display = show ? 'flex' : 'none';
+        const showLoader = (show, text = '') => {
+            const existingText = loadingOverlay.querySelector('p');
+            if (existingText) {
+                loadingOverlay.removeChild(existingText);
+            }
+            if (show) {
+                if (text) {
+                    const p = document.createElement('p');
+                    p.className = 'text-yellow-400 mt-4 text-center';
+                    p.textContent = text;
+                    loadingOverlay.appendChild(p);
+                }
+                loadingOverlay.style.display = 'flex';
+            } else {
+                loadingOverlay.style.display = 'none';
+            }
         };
 
         // --- Local Storage Management ---
@@ -600,10 +616,7 @@
             const bookInfo = allBooks.find(b => b.id == bookId);
             if (!bookInfo) return;
             
-            showLoader(true);
-            // MODIFIED: Pass the entire bookInfo object to fetchBookDetails
             const bookDetails = await fetchBookDetails(bookInfo);
-            showLoader(false);
 
             if (!bookDetails || !bookDetails.volumes) {
                 alert('عذراً، لم يتم العثور على محتوى هذا الكتاب.');
@@ -705,15 +718,11 @@
                 return;
             }
 
-            showLoader(true);
+            showLoader(true, 'جاري البحث...');
             
             setTimeout(() => {
                 const results = [];
-                
-                const queryParts = query.split(/\s+/);
-                const escapedParts = queryParts.map(part => part.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'));
-                const flexibleQuery = escapedParts.join('\\s+');
-                const regex = new RegExp(flexibleQuery, 'gi');
+                const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
 
                 searchableContent.forEach(item => {
                     let match;
@@ -933,8 +942,23 @@
 
         // --- App Initialization ---
         async function buildSearchIndex() {
+            const searchContentWrapper = document.getElementById('search-content-wrapper');
+            const searchContentCheckbox = document.getElementById('search-content-checkbox');
+            const searchContentLabel = document.getElementById('search-content-label');
+            const searchContentTooltip = document.getElementById('search-content-tooltip');
+            
             indexingStatus.classList.remove('hidden');
-            // MODIFIED: Pass the entire book object
+            indexingStatus.classList.add('flex');
+            searchContentCheckbox.disabled = true;
+            searchContentLabel.classList.add('opacity-50', 'cursor-not-allowed');
+
+            searchContentWrapper.onmouseenter = () => {
+                if(searchContentCheckbox.disabled) searchContentTooltip.classList.remove('hidden');
+            };
+            searchContentWrapper.onmouseleave = () => {
+                if(searchContentCheckbox.disabled) searchContentTooltip.classList.add('hidden');
+            };
+            
             const detailPromises = allBooks.map(book => fetchBookDetails(book));
             const allDetails = await Promise.all(detailPromises);
 
@@ -962,7 +986,12 @@
             });
             searchableContent = tempIndex;
             isIndexBuilt = true;
+            
             indexingStatus.classList.add('hidden');
+            indexingStatus.classList.remove('flex');
+            searchContentCheckbox.disabled = false;
+            searchContentLabel.classList.remove('opacity-50', 'cursor-not-allowed');
+            searchContentTooltip.classList.add('hidden');
             console.log(`Search index built with ${searchableContent.length} pages.`);
         }
 
@@ -986,7 +1015,7 @@
         }
 
         async function initializeApp() {
-            showLoader(true);
+            showLoader(true, "جاري تحميل قائمة الكتب...");
             allBooks = await fetchMasterList();
             showLoader(false);
             
@@ -997,18 +1026,20 @@
             
             loadAndFindArabicVoice();
             
-            // Render the main library view first
             sortAndRender();
             
-            // Then handle any deep links from the URL
             await handleUrlHash();
             
-            // Finally, build the search index in the background
-            buildSearchIndex(); 
+            // The search index will now build in the background without blocking the UI
+            setTimeout(buildSearchIndex, 500); 
 
             // Event Listeners
             searchBtn.addEventListener('click', () => {
                 if (searchContentCheckbox.checked) {
+                    if (!isIndexBuilt) {
+                        alert('يرجى الانتظار حتى تكتمل فهرسة محتوى الكتب قبل استخدام هذه الميزة.');
+                        return;
+                    }
                     handleAdvancedSearch();
                 } else {
                     handleSimpleSearch();
@@ -1050,3 +1081,4 @@
     </script>
 </body>
 </html>
+
