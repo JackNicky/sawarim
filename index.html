@@ -454,7 +454,7 @@
             }
             
             showLoader(true, '', true);
-            progressText.textContent = `جاري تحميل الكتاب...`;
+            progressText.textContent = `جاري تحميل ملف الجزء...`;
             progressBar.style.width = '0%';
 
             try {
@@ -465,7 +465,6 @@
                 }
 
                 if (!response.body) {
-                    // Fallback for environments that don't support streams well
                     return response.json();
                 }
 
@@ -485,11 +484,10 @@
                     receivedLength += value.length;
 
                     if (contentLength) {
-                        const percent = Math.round((receivedLength / contentLength) * 100);
+                        const percent = Math.min(100, Math.round((receivedLength / contentLength) * 100));
                         progressBar.style.width = `${percent}%`;
                         progressText.textContent = `جاري تحميل الكتاب... ${percent}%`;
                     } else {
-                         // Fallback text if content length is unknown
                          progressText.textContent = `جاري تحميل الكتاب... (${(receivedLength / 1024).toFixed(0)} KB)`;
                     }
                 }
@@ -502,7 +500,17 @@
                 }
 
                 const resultJSON = new TextDecoder("utf-8").decode(chunksAll);
-                return JSON.parse(resultJSON);
+                const fullPartData = JSON.parse(resultJSON);
+
+                // Filter to get only the requested volume
+                const requestedVolume = fullPartData.volumes.find(v => v.volumeNumber == absoluteVolumeNumber);
+
+                if (!requestedVolume) {
+                     throw new Error(`Volume ${absoluteVolumeNumber} not found in the fetched file.`);
+                }
+                
+                // Return a new object with only the specific volume to improve performance.
+                return { volumes: [requestedVolume] };
 
             } catch (err) {
                 console.error(`Error fetching book data:`, err);
@@ -768,10 +776,9 @@
                 if(loadingScreen && !loadingScreen.style.opacity) startMainContentAnimation();
                 if (bookmarksModal.style.display === 'flex') bookmarksModal.style.display = 'none';
                 const bookDetails = await fetchBookDataForReading(bookInfo, directVolumeNumber);
-                if (bookDetails && bookDetails.volumes) {
-                    let relativeIndex = bookDetails.volumes.findIndex(v => v.volumeNumber == directVolumeNumber);
-                    if (relativeIndex === -1) relativeIndex = 0;
-                    openReader(bookInfo, bookDetails.volumes, relativeIndex, pageNumber, highlightText);
+                if (bookDetails && bookDetails.volumes && bookDetails.volumes.length > 0) {
+                    // The volume we want is always the first (and only) one now.
+                    openReader(bookInfo, bookDetails.volumes, 0, pageNumber, highlightText);
                 }
                 return;
             }
@@ -1007,4 +1014,5 @@
     </script>
 </body>
 </html>
+
 
