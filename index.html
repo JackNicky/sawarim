@@ -266,7 +266,20 @@
     <!-- Modals and Overlays -->
     <div id="volumes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4"></div>
     <div id="toc-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4"></div>
-    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[130] hidden items-center justify-center flex-col"><div class="loader"></div></div>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[130] hidden items-center justify-center flex-col">
+        <!-- Spinner for general loading -->
+        <div id="spinner-container" class="flex flex-col items-center justify-center">
+             <div class="loader"></div>
+             <p id="spinner-text" class="text-yellow-400 mt-4 text-center"></p>
+        </div>
+        <!-- Progress bar for book download -->
+        <div id="progress-container" class="w-3/4 max-w-md hidden">
+            <div class="bg-gray-700 rounded-full h-2.5">
+                <div id="progress-bar" class="bg-yellow-400 h-2.5 rounded-full transition-all duration-300 ease-linear" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" class="text-yellow-400 mt-2 text-center"></p>
+        </div>
+    </div>
     
     <div id="bookmarks-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
         <div class="modal-content bg-gray-800 w-full max-w-2xl rounded-lg shadow-xl flex flex-col max-h-[90vh]">
@@ -424,40 +437,105 @@
             });
         
         async function fetchBookDataForReading(bookInfo, absoluteVolumeNumber = 1) {
-            try {
-                let fileToFetch;
-                if (bookInfo.parts && bookInfo.parts.length > 0) {
-                    const partInfo = bookInfo.parts.find(p => absoluteVolumeNumber >= p.startVolume && absoluteVolumeNumber <= p.endVolume);
-                    if (!partInfo) throw new Error(`Could not find part for volume ${absoluteVolumeNumber}`);
-                    fileToFetch = partInfo.file;
-                } else {
-                    fileToFetch = `book_${bookInfo.id}.json`;
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            let fileToFetch;
+            if (bookInfo.parts && bookInfo.parts.length > 0) {
+                const partInfo = bookInfo.parts.find(p => absoluteVolumeNumber >= p.startVolume && absoluteVolumeNumber <= p.endVolume);
+                if (!partInfo) {
+                    console.error(`Could not find part for volume ${absoluteVolumeNumber}`);
+                    alert('الجزء المطلوب من الكتاب غير متوفر حالياً.');
+                    return null;
                 }
-                showLoader(true, `جاري تحميل الكتاب...`);
-                const res = await fetch(`./data/${fileToFetch}`);
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${fileToFetch}`);
-                return await res.json();
+                fileToFetch = partInfo.file;
+            } else {
+                fileToFetch = `book_${bookInfo.id}.json`;
+            }
+            
+            showLoader(true, '', true);
+            progressText.textContent = `جاري تحميل الكتاب...`;
+            progressBar.style.width = '0%';
+
+            try {
+                const response = await fetch(`./data/${fileToFetch}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} for ${fileToFetch}`);
+                }
+
+                if (!response.body) {
+                    // Fallback for environments that don't support streams well
+                    return response.json();
+                }
+
+                const reader = response.body.getReader();
+                const contentLength = +response.headers.get('Content-Length');
+                let receivedLength = 0;
+                let chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        progressText.textContent = 'اكتمل التحميل، جاري التجهيز...';
+                        progressBar.style.width = `100%`;
+                        break;
+                    }
+                    chunks.push(value);
+                    receivedLength += value.length;
+
+                    if (contentLength) {
+                        const percent = Math.round((receivedLength / contentLength) * 100);
+                        progressBar.style.width = `${percent}%`;
+                        progressText.textContent = `جاري تحميل الكتاب... ${percent}%`;
+                    } else {
+                         // Fallback text if content length is unknown
+                         progressText.textContent = `جاري تحميل الكتاب... (${(receivedLength / 1024).toFixed(0)} KB)`;
+                    }
+                }
+                
+                let chunksAll = new Uint8Array(receivedLength);
+                let position = 0;
+                for (let chunk of chunks) {
+                    chunksAll.set(chunk, position);
+                    position += chunk.length;
+                }
+
+                const resultJSON = new TextDecoder("utf-8").decode(chunksAll);
+                return JSON.parse(resultJSON);
+
             } catch (err) {
                 console.error(`Error fetching book data:`, err);
-                alert('حدث خطأ أثناء تحميل بيانات الكتاب.');
+                progressText.textContent = 'حدث خطأ أثناء تحميل بيانات الكتاب.';
+                setTimeout(() => showLoader(false), 2000);
                 return null;
             } finally {
-                showLoader(false);
+                setTimeout(() => {
+                    showLoader(false);
+                }, 500);
             }
         }
 
-        const showLoader = (show, text = '') => {
-            const loaderP = loadingOverlay.querySelector('.loader-text');
-            if (loaderP) loaderP.remove();
+
+        const showLoader = (show, text = '', showProgress = false) => {
+            const spinnerContainer = document.getElementById('spinner-container');
+            const spinnerText = document.getElementById('spinner-text');
+            const progressContainer = document.getElementById('progress-container');
 
             if (show) {
-                const p = document.createElement('p');
-                p.className = 'loader-text text-yellow-400 mt-4 text-center';
-                p.textContent = text;
-                loadingOverlay.appendChild(p);
-                loadingOverlay.style.display = 'flex';
+                if (showProgress) {
+                    spinnerContainer.classList.add('hidden');
+                    progressContainer.classList.remove('hidden');
+                } else {
+                    progressContainer.classList.add('hidden');
+                    spinnerContainer.classList.remove('hidden');
+                    spinnerText.textContent = text;
+                }
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
             } else {
-                loadingOverlay.style.display = 'none';
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
             }
         };
 
@@ -705,7 +783,7 @@
             
             const bookDetails = await fetchBookDataForReading(bookInfo);
             if (!bookDetails || !bookDetails.volumes || bookDetails.volumes.length === 0) {
-                alert('لا يمكن تحميل هذا الكتاب حالياً.');
+                // Error is handled inside fetchBookDataForReading
                 return;
             }
 
@@ -806,16 +884,15 @@
 
         async function handleUrlNavigation() {
             const match = window.location.hash.match(/#\/book\/(\d+)\/volume\/(\d+)\/page\/(\d+)/);
+            const params = new URLSearchParams(window.location.search);
+            const highlight = params.get('highlight');
+
             if (match) {
                 const [, bookId, volumeNumber, pageNumber] = match.map(Number);
                 await new Promise(resolve => { const interval = setInterval(() => { if (allBooks.length > 0) { clearInterval(interval); resolve(); } }, 100); });
                 const bookInfo = allBooks.find(b => b.id == bookId);
-                const bookDetails = await fetchBookDataForReading(bookInfo, volumeNumber);
-                if (bookDetails && bookDetails.volumes) {
-                    let relativeIndex = bookDetails.volumes.findIndex(v => v.volumeNumber == volumeNumber);
-                     if (relativeIndex === -1) relativeIndex = 0;
-                    openReader(bookInfo, bookDetails.volumes, relativeIndex, pageNumber);
-                }
+                if (!bookInfo) return;
+                handleBookClick(bookInfo.id, volumeNumber, pageNumber, highlight);
             }
         }
         
