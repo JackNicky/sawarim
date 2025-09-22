@@ -765,32 +765,40 @@
             const bookInfo = allBooks.find(b => b.id == bookId);
             if (!bookInfo) return;
 
-            if (!directVolumeNumber && bookInfo.totalVolumes > 1) {
+            // Case 1: Multi-part book (like Bihar). Show volume selector immediately.
+            if (!directVolumeNumber && bookInfo.parts && bookInfo.totalVolumes > 1) {
                  openVolumeSelector(bookInfo);
                  return;
             }
-            
+
+            // For all other cases, we need to fetch the data first.
             showLoader(true, '', true);
             try {
                 const bookData = await fetchBookDataForReading(bookInfo, directVolumeNumber || 1);
+                if (!bookData) {
+                    alert('لا يمكن تحميل هذا الكتاب حالياً.');
+                    return;
+                }
                 
-                if (bookData && bookData.volumes) {
-                     if (loadingScreen && !loadingScreen.style.opacity) startMainContentAnimation();
-                     if (bookmarksModal.style.display === 'flex') bookmarksModal.style.display = 'none';
+                const volumes = bookData.volumes || [bookData];
 
-                    let finalVolumeNumber = directVolumeNumber || bookData.volumes[0]?.volumeNumber || 1;
-                    let relativeIndex = bookData.volumes.findIndex(v => v.volumeNumber == finalVolumeNumber);
+                // Case 2: The loaded data has multiple volumes, and we weren't asked for a specific one.
+                if (!directVolumeNumber && volumes.length > 1) {
+                    openVolumeSelector(bookInfo, volumes);
+                } else {
+                // Case 3: We have the data and need to open the reader.
+                    if (loadingScreen && !loadingScreen.style.opacity) startMainContentAnimation();
+                    if (bookmarksModal.style.display === 'flex') bookmarksModal.style.display = 'none';
+
+                    let finalVolumeNumber = directVolumeNumber || volumes[0]?.volumeNumber || 1;
+                    let relativeIndex = volumes.findIndex(v => v.volumeNumber == finalVolumeNumber);
                    
                     if (relativeIndex === -1) {
                          alert(`خطأ: الجزء ${finalVolumeNumber} غير موجود في الملف المحمل.`);
                          return;
                     }
                     
-                    openReader(bookInfo, bookData.volumes, relativeIndex, pageNumber, highlightText);
-                } else if (bookData) { 
-                     openReader(bookInfo, [bookData], 0, pageNumber, highlightText);
-                } else {
-                    alert('لا يمكن تحميل هذا الكتاب حالياً.');
+                    openReader(bookInfo, volumes, relativeIndex, pageNumber, highlightText);
                 }
             } finally {
                 showLoader(false);
@@ -1011,6 +1019,4 @@
     </script>
 </body>
 </html>
-
-
 
