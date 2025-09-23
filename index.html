@@ -11,8 +11,8 @@
     <!-- Added new fonts for the settings -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700&family=Tajawal:wght@400;500;700&family=Almarai:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* Default Font */
-        body { font-family: 'Cairo', sans-serif; }
+        /* Default Font updated to Tajawal */
+        body { font-family: 'Tajawal', sans-serif; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #111827; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
@@ -88,7 +88,6 @@
             margin: 0 auto;
         }
         
-        /* New styles for font settings modal */
         .font-btn.active {
             background-color: #ca8a04;
             color: white;
@@ -102,7 +101,6 @@
         <div id="animated-header-wrapper">
             <div id="hadith-box" class="w-full">
                 <div class="hadith-content p-6 rounded-lg shadow-2xl text-center relative">
-                    <!-- Request 2: Modernize Hadith Quotes -->
                     <div class="text-xl lg:text-2xl text-white mb-4 transition-all duration-1000 flex items-center justify-center gap-3" style="line-height: 1.8;">
                         <svg class="w-6 h-6 text-yellow-400 opacity-50 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M6 17h3l2-4V7H5v6h3l-2 4zm8 0h3l2-4V7h-6v6h3l-2 4z"></path></svg>
                         <span id="hadith-text-content"></span>
@@ -172,7 +170,6 @@
         </main>
     </div>
     
-    <!-- Requests 5, 6, 7, 8: Updated Side Menu -->
     <nav id="side-menu" class="fixed top-0 right-0 h-full w-72 bg-gray-800 shadow-2xl z-[120] p-6">
         <button id="close-menu-btn" class="absolute top-4 left-4 p-2 text-gray-400 hover:text-white">
              <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -215,20 +212,16 @@
     <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-60 z-[115] hidden"></div>
 
 
-    <!-- Request 3: Reader View UI Fix -->
     <div id="reader-view" class="hidden fixed inset-0 flex flex-col bg-gray-800">
         <div class="flex justify-between items-center p-2 border-b border-gray-700 flex-shrink-0 z-10 bg-gray-800">
-            <!-- Right side in RTL -->
             <div class="w-16 text-right">
                 <button id="reader-menu-toggle" class="p-2 rounded-full hover:bg-gray-700 text-white inline-block">
                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
             </div>
-            <!-- Center -->
             <div class="flex-grow text-center min-w-0">
                 <h2 id="reader-book-title" class="text-md sm:text-lg font-bold text-white mx-auto truncate"></h2>
             </div>
-            <!-- Left side in RTL -->
             <div class="w-16 text-left">
                  <button id="close-reader-btn" class="p-2 rounded-full hover:bg-red-500 inline-block" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
@@ -341,7 +334,6 @@
                     <p id="share-hadith-source" class="text-yellow-400 text-base md:text-lg mb-12"></p>
                     <div class="absolute bottom-6 w-full px-6 flex flex-col items-center">
                        <img src="logo.png" alt="Logo" class="h-14 mb-2">
-                       <!-- Request 1: Add Library Name to Share Image -->
                        <p class="text-lg font-bold text-white mt-1 mb-1">مكتبة صوارم حيدرية</p>
                        <p id="share-url" class="text-sm text-gray-400"></p>
                     </div>
@@ -355,8 +347,6 @@
         </div>
     </div>
 
-    <!-- NEW MODALS -->
-    <!-- Request 4: Description Modal -->
     <div id="description-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
         <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
@@ -367,7 +357,6 @@
         </div>
     </div>
 
-    <!-- Request 6: About Modal -->
     <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
         <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
@@ -382,7 +371,6 @@
         </div>
     </div>
     
-    <!-- Request 8: Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
         <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
@@ -394,10 +382,10 @@
                     <h3 class="text-lg font-semibold text-white mb-2">تغيير خط المكتبة</h3>
                     <div id="font-selection" class="flex flex-col sm:flex-row gap-2">
                         <button class="font-btn flex-1 p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors" data-font="'Cairo', sans-serif">
-                            <span style="font-family: 'Cairo', sans-serif;">خط كايرو (الافتراضي)</span>
+                            <span style="font-family: 'Cairo', sans-serif;">خط كايرو</span>
                         </button>
                         <button class="font-btn flex-1 p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors" data-font="'Tajawal', sans-serif">
-                            <span style="font-family: 'Tajawal', sans-serif;">خط تجوال</span>
+                            <span style="font-family: 'Tajawal', sans-serif;">خط تجوال (الافتراضي)</span>
                         </button>
                         <button class="font-btn flex-1 p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors" data-font="'Almarai', sans-serif">
                              <span style="font-family: 'Almarai', sans-serif;">خط المراعي</span>
@@ -430,7 +418,6 @@
         const closeMenuBtn = document.getElementById('close-menu-btn');
         const menuOverlay = document.getElementById('menu-overlay');
         
-        // New menu buttons
         const showBookmarksBtnMenu = document.getElementById('show-bookmarks-btn-menu');
         const settingsBtn = document.getElementById('settings-btn');
         const aboutBtn = document.getElementById('about-btn');
@@ -438,7 +425,6 @@
         const readerSidebar = document.getElementById('reader-sidebar');
         const readerMenuOverlay = document.getElementById('reader-menu-overlay');
         
-        // New modals
         const bookmarksModal = document.getElementById('bookmarks-modal');
         const descriptionModal = document.getElementById('description-modal');
         const aboutModal = document.getElementById('about-modal');
@@ -461,12 +447,12 @@
             const savedFont = localStorage.getItem('sawarim_font');
             if (savedFont) {
                 document.body.style.fontFamily = savedFont;
-                // Update active button in settings modal
                 document.querySelectorAll('.font-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.font === savedFont);
                 });
             } else {
-                 document.querySelector('.font-btn[data-font*="Cairo"]')?.classList.add('active');
+                 // Set Tajawal as default active button
+                 document.querySelector('.font-btn[data-font*="Tajawal"]')?.classList.add('active');
             }
         }
         
@@ -479,7 +465,6 @@
                 if (!randomHadith || !randomHadith.hadith || !randomHadith.source || !randomHadith.source.name) {
                      throw new Error('Invalid hadith object format in JSON file.');
                 }
-                // Request 2: Update content span instead of the whole element
                 document.getElementById('hadith-text-content').textContent = randomHadith.hadith;
                 currentHadithForShare.text = randomHadith.hadith;
                 currentHadithForShare.source = randomHadith.source.name;
@@ -534,7 +519,6 @@
             closeMenuBtn.onclick = closeMenu;
             menuOverlay.onclick = closeMenu;
             
-            // Link menu buttons to actions
             showBookmarksBtnMenu.onclick = (e) => { e.preventDefault(); closeMenu(); openBookmarksModal(); };
             aboutBtn.onclick = (e) => { e.preventDefault(); closeMenu(); aboutModal.style.display = 'flex'; };
             settingsBtn.onclick = (e) => { e.preventDefault(); closeMenu(); settingsModal.style.display = 'flex'; };
@@ -907,7 +891,6 @@
             });
         }
 
-        // Request 4: Function to open description modal
         function openDescriptionModal(bookId) {
             const book = allBooks.find(b => b.id === bookId);
             if (book) {
@@ -923,7 +906,6 @@
             if (index > -1) bookmarks.savedBooks.splice(index, 1);
             else bookmarks.savedBooks.push(bookId);
             saveBookmarks(bookmarks);
-            // Re-render only the affected book to be more efficient
             const currentQuery = searchInput.value.toLowerCase();
             const filteredBooks = currentQuery ? allBooks.filter(b => b.title.toLowerCase().includes(currentQuery) || b.author.toLowerCase().includes(currentQuery)) : allBooks;
             sortAndRender(filteredBooks);
@@ -1081,7 +1063,7 @@
         }
 
         async function init() {
-            applySavedFont(); // Request 8: Apply saved font on start
+            applySavedFont();
             await loadRandomHadith();
             loadAndFindArabicVoice();
             setupSideMenu();
@@ -1114,7 +1096,6 @@
                 document.querySelectorAll('.bookmark-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== btn.dataset.tab));
             });
             
-            // Request 8: Font selection logic
             document.querySelectorAll('.font-btn').forEach(btn => {
                 btn.onclick = () => {
                     const selectedFont = btn.dataset.font;
@@ -1199,6 +1180,4 @@
     </script>
 </body>
 </html>
-
-
 
