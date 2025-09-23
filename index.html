@@ -444,14 +444,12 @@
         let currentHadithForShare = { text: '', source: '' };
 
         function applySavedFont() {
-            const savedFont = localStorage.getItem('sawarim_font');
-            if (savedFont) {
-                document.body.style.fontFamily = savedFont;
-                document.querySelectorAll('.font-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.font === savedFont);
-                });
-            } else {
-                 // Set Tajawal as default active button
+            const savedFont = localStorage.getItem('sawarim_font') || "'Tajawal', sans-serif";
+            document.body.style.setProperty('font-family', savedFont, 'important');
+            document.querySelectorAll('.font-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.font === savedFont);
+            });
+             if (!localStorage.getItem('sawarim_font')) {
                  document.querySelector('.font-btn[data-font*="Tajawal"]')?.classList.add('active');
             }
         }
@@ -1099,7 +1097,7 @@
             document.querySelectorAll('.font-btn').forEach(btn => {
                 btn.onclick = () => {
                     const selectedFont = btn.dataset.font;
-                    document.body.style.fontFamily = selectedFont;
+                    document.body.style.setProperty('font-family', selectedFont, 'important');
                     localStorage.setItem('sawarim_font', selectedFont);
                     document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
@@ -1180,4 +1178,6 @@
     </script>
 </body>
 </html>
+
+
 
