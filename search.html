@@ -221,7 +221,7 @@
                             }
                             filesProcessed++;
                             indexingProgress.style.width = `${(filesProcessed / totalFilesToFetch) * 100}%`;
-                            indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
+                            indexingStatus.textContent = `جاري فهرسة الكتب ،لأول مرة... (${filesProcessed} / ${totalFilesToFetch})`;
                         }
                     } else {
                         const bookDetails = await fetchBookPart(`book_${book.id}.json`);
