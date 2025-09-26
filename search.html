@@ -206,7 +206,7 @@
                     totalFilesToFetch += (book.parts ? book.parts.length : 1);
                 });
                 let filesProcessed = 0;
-                indexingStatus.textContent = `جاري فهرسة الكتب... (0 / ${totalFilesToFetch})`;
+                indexingStatus.textContent = `جاري فهرسة الكتب ،لأول مرة... (0 / ${totalFilesToFetch})`;
 
                 for (const book of allBooks) {
                     if (book.parts && book.parts.length > 0) {
