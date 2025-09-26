@@ -92,7 +92,6 @@
                 searchInput.style.height = (searchInput.scrollHeight) + 'px';
             });
 
-            let searchableContent = [];
             let isIndexBuilt = false;
 
             const DB_NAME = 'LibrarySearchDB';
@@ -139,23 +138,8 @@
                 });
             }
 
-            function loadIndexFromDB() {
-                return new Promise((resolve, reject) => {
-                    if (!db) return reject("DB not open");
-                    const transaction = db.transaction([STORE_NAME], 'readonly');
-                    const store = transaction.objectStore(STORE_NAME);
-                    // Change: Load all individual page objects instead of one large entry.
-                    const request = store.getAll();
-                    request.onsuccess = event => resolve(event.target.result || []); // Returns an array of all page objects
-                    request.onerror = event => {
-                        console.error("Error loading index from DB", event.target.error);
-                        reject("DB load error");
-                    };
-                });
-            }
-
-            // This function is no longer needed as we write incrementally.
-            /* function saveIndexToDB(content) { ... } */
+            // This function is no longer needed as we search the DB directly.
+            /* function loadIndexFromDB() { ... } */
             
             // --- Book Fetching and Dropdown Population ---
             const fetchMasterList = () => fetch('./data/books.json')
@@ -222,41 +206,14 @@
                                 indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
                                 await new Promise(resolve => setTimeout(resolve, 10)); // Yield to allow UI updates
                             }
-                        } else {
-                            const bookDetails = await fetchBookPart(`book_${book.id}.json`);
-                            if (bookDetails && bookDetails.volumes) {
-                                bookDetails.volumes.forEach(volume => {
-                                    volume.content?.forEach(page => {
-                                        store.put({ id: pageIdCounter++, bookId: book.id, bookTitle: book.title, volumeTitle: volume.volumeTitle, pageNumber: page.pageNumber, chapter: page.chapter, text: page.text, normalizedText: normalizeText(page.text), absoluteVolumeNumber: volume.volumeNumber });
-                                    });
-                                });
-                            }
-                            filesProcessed++;
-                            const progress = (filesProcessed / totalFilesToFetch) * 100;
-                            indexingProgress.style.width = `${progress}%`;
-                            indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
-                            await new Promise(resolve => setTimeout(resolve, 10)); // Yield to allow UI updates
                         }
                     }
 
-                    transaction.oncomplete = async () => {
-                        console.log("Indexing transaction completed.");
-                        try {
-                            searchableContent = await loadIndexFromDB(); // Reload the full index from DB
-                             if (searchableContent && searchableContent.length > 0) {
-                                isIndexBuilt = true;
-                                console.log(`Search index built and loaded with ${searchableContent.length} pages.`);
-                            } else {
-                                 console.error("Index is empty after building.");
-                                 indexingStatus.textContent = "فشل بناء الفهرس.";
-                            }
-                        } catch (loadErr) {
-                            console.error("Failed to load index after building:", loadErr);
-                            indexingStatus.textContent = "خطأ في تحميل الفهرس بعد البناء.";
-                        } finally {
-                            initialLoadingView.classList.add('hidden');
-                            searchView.classList.remove('hidden');
-                        }
+                    transaction.oncomplete = () => {
+                        console.log("Indexing transaction completed successfully.");
+                        isIndexBuilt = true;
+                        initialLoadingView.classList.add('hidden');
+                        searchView.classList.remove('hidden');
                     };
 
                     transaction.onerror = (event) => {
@@ -278,36 +235,61 @@
             function handleAdvancedSearch() {
                 const query = searchInput.value.trim();
                 const selectedBookId = bookSelect.value;
+                const resultsView = searchResultsView;
 
                 if (!query) {
-                    searchResultsView.innerHTML = '<p class="text-center text-gray-400">الرجاء إدخال نص للبحث.</p>';
+                    resultsView.innerHTML = '<p class="text-center text-gray-400">الرجاء إدخال نص للبحث.</p>';
                     return;
                 }
                  if (!isIndexBuilt) {
                     alert("الفهرسة لا تزال قيد التقدم. الرجاء الانتظار.");
                     return;
                 }
+                
+                resultsView.innerHTML = `
+                    <div class="text-center py-10">
+                         <div class="loader mx-auto"></div>
+                         <p class="mt-4 text-yellow-400">...جاري البحث</p>
+                    </div>`;
 
                 const normalizedQuery = normalizeText(query);
-                // Escape special regex characters, then replace any whitespace sequence (including newlines) with \s+ for flexible matching.
                 const regexPattern = normalizedQuery
                     .replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
                     .replace(/\s+/g, '\\s+');
-                const results = [];
                 const regex = new RegExp(regexPattern, 'gi');
                 
-                const contentToSearch = selectedBookId === 'all' 
-                    ? searchableContent 
-                    : searchableContent.filter(item => item.bookId == selectedBookId);
+                const results = [];
+                if (!db) {
+                    console.error("Database is not open.");
+                    resultsView.innerHTML = '<p class="text-center text-red-500">خطأ: قاعدة البيانات غير متاحة.</p>';
+                    return;
+                }
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.openCursor();
 
-                contentToSearch.forEach(item => {
-                    if (item.normalizedText && item.normalizedText.match(regex)) {
-                        const snippet = createSnippet(item.text, query);
-                        results.push({ ...item, snippet });
+                request.onsuccess = event => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        const item = cursor.value;
+                        if (selectedBookId === 'all' || item.bookId == selectedBookId) {
+                            if (item.normalizedText && item.normalizedText.match(regex)) {
+                                const snippet = createSnippet(item.text, query);
+                                results.push({ ...item, snippet });
+                            }
+                        }
+                        cursor.continue();
                     }
-                });
+                };
                 
-                displayAdvancedSearchResults(results, query);
+                transaction.oncomplete = () => {
+                    displayAdvancedSearchResults(results, query);
+                };
+
+                transaction.onerror = (event) => {
+                    console.error("Search transaction error:", event.target.error);
+                    resultsView.innerHTML = '<p class="text-center text-red-500">حدث خطأ أثناء البحث في قاعدة البيانات.</p>';
+                };
             }
             
             function createFlexibleRegexForHighlighting(query) {
@@ -374,19 +356,30 @@
                 await populateBooksDropdown();
                 try {
                     await openDB();
-                    const storedIndex = await loadIndexFromDB();
-                    if (storedIndex && storedIndex.length > 0) {
-                        console.log("Loading search index from IndexedDB.");
-                        searchableContent = storedIndex;
-                        isIndexBuilt = true;
-                        searchView.classList.remove('hidden');
-                    } else {
-                        console.log("No index in DB, building a new one.");
-                        await buildAndStoreIndex();
-                    }
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const countRequest = store.count();
+
+                    countRequest.onsuccess = () => {
+                        if (countRequest.result > 0) {
+                            console.log("IndexedDB contains data. Search is ready.");
+                            isIndexBuilt = true;
+                            initialLoadingView.classList.add('hidden');
+                            searchView.classList.remove('hidden');
+                        } else {
+                            console.log("No index in DB, building a new one.");
+                            buildAndStoreIndex();
+                        }
+                    };
+                    
+                    countRequest.onerror = (event) => {
+                         console.error("Failed to count items in DB. Building from scratch.", event.target.error);
+                         buildAndStoreIndex();
+                    };
+                    
                 } catch (error) {
                     console.error("Failed to initialize DB or load index. Building from scratch.", error);
-                    await buildAndStoreIndex();
+                    buildAndStoreIndex();
                 }
             }
             
@@ -406,6 +399,7 @@
     </script>
 </body>
 </html>
+
 
 
 
