@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مكتبة صوارم حيدرية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Added new fonts for the settings -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700&family=Tajawal:wght@400;500;700&family=Almarai:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Default Font updated to Tajawal */
+        body { font-family: 'Tajawal', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        .book-content { line-height: 2.2; }
+        .book-content mark {
+            background-color: #facc15; /* yellow-400 */
+            color: #111827; /* gray-900 */
+            padding: 2px 1px;
+            border-radius: 3px;
+        }
+        .disabled-btn { opacity: 0.5; cursor: not-allowed; }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ca8a04;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #page-jump-input {
+            width: 60px; background-color: #374151; border: 1px solid #4b5563;
+            border-radius: 6px; text-align: center; color: white; -moz-appearance: textfield;
+        }
+        #page-jump-input::-webkit-outer-spin-button, #page-jump-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .theme-dark { --bg-color: #1f2937; --text-color: #d1d5db; --highlight-color: #ca8a04; }
+        .theme-light { --bg-color: #f3f4f6; --text-color: #111827; --highlight-color: #f59e0b; }
+        .theme-sepia { --bg-color: #fbf3e4; --text-color: #5f4b32; --highlight-color: #d97706; }
+        .reader-content-area { background-color: var(--bg-color); color: var(--text-color); }
+        .reader-content-area h4 { color: var(--highlight-color); }
+        .view-btn.active { background-color: #ca8a04; color: white; }
+        .bookmark-tab-btn.active { background-color: #ca8a04; color: white; border-bottom: 2px solid #ca8a04; }
+
+        .modal-content { animation: zoomIn 0.3s ease-out; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        #bookmark-page-btn.saved svg { fill: #facc15; color: #facc15; }
+
+        #loading-screen { transition: opacity 1.5s ease-out; }
+        
+        #animated-header-wrapper {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: top, transform;
+            z-index: 101;
+            width: 100%;
+            max-width: 42rem;
+        }
+        #animated-header-wrapper.animated {
+            top: 60px;
+            transform: translate(-50%, 0) scale(0.70);
+        }
+        
+        .hadith-content {
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            border: 1px solid #4a5568;
+        }
+        
+        #side-menu, #reader-sidebar {
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(100%);
+        }
+        #side-menu.open, #reader-sidebar.open {
+            transform: translateX(0);
+        }
+        #menu-overlay, #reader-menu-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .settled {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            transform: none !important;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        .font-btn.active {
+            background-color: #ca8a04;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Interactive Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center">
+        <div id="animated-header-wrapper">
+            <div id="hadith-box" class="w-full">
+                <div class="hadith-content p-6 rounded-lg shadow-2xl text-center relative">
+                    <div class="text-xl lg:text-2xl text-white mb-4 transition-all duration-1000 flex items-center justify-center gap-3" style="line-height: 1.8;">
+                        <svg class="w-6 h-6 text-yellow-400 opacity-50 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M6 17h3l2-4V7H5v6h3l-2 4zm8 0h3l2-4V7h-6v6h3l-2 4z"></path></svg>
+                        <span id="hadith-text-content"></span>
+                        <svg class="w-6 h-6 text-yellow-400 opacity-50 flex-shrink-0" style="transform: scaleX(-1);" viewBox="0 0 24 24" fill="currentColor"><path d="M6 17h3l2-4V7H5v6h3l-2 4zm8 0h3l2-4V7h-6v6h3l-2 4z"></path></svg>
+                    </div>
+                    <p id="hadith-source" class="text-yellow-400 cursor-pointer hover:text-yellow-300 transition-colors"></p>
+                    <button id="share-hadith-btn" class="absolute bottom-4 left-4 p-2 bg-gray-700/50 rounded-full hover:bg-gray-600 transition-colors" title="مشاركة الحديث">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="loading-indicator" class="absolute bottom-10 left-1/2 -translate-x-1/2 w-1/3 max-w-xs">
+            <div class="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                <div id="loading-progress" class="w-0 h-full bg-yellow-400 rounded-full transition-all duration-3000 ease-linear"></div>
+            </div>
+            <p class="text-center text-gray-400 text-sm mt-2">جاري تحميل المكتبة...</p>
+        </div>
+    </div>
+
+
+    <!-- Main View (Book List) -->
+    <div id="main-view" class="invisible">
+        <button id="menu-toggle-btn" class="fixed top-4 right-4 z-[125] p-2 bg-gray-800/50 backdrop-blur-sm rounded-md hover:bg-gray-700 transition-colors">
+            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+
+        <header id="static-header" class="container mx-auto text-center pt-6 pb-4">
+             <img src="logo.png" alt="مكتبة صوارم حيدرية" class="w-48 md:w-64 mx-auto mb-4">
+             <div id="header-placeholder" class="min-h-[120px]"></div>
+        </header>
+
+        <main class="container mx-auto p-6">
+             <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <div class="relative flex-grow">
+                    <input id="search-input" placeholder="ابحث عن عنوان كتاب أو مؤلف..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                </div>
+                <div class="flex items-center gap-4 flex-wrap justify-center">
+                    <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
+                    <a href="./search.html" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث متقدم في المحتوى</a>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 mb-8 items-center">
+                 <div class="flex-grow flex items-center gap-2">
+                    <span class="text-gray-400">عرض:</span>
+                    <div class="flex-shrink-0 bg-gray-800 border border-gray-700 rounded-lg p-1">
+                        <button id="grid-view-btn" class="view-btn p-2 rounded-md active" title="عرض شبكي"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM11 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z"></path></svg></button>
+                        <button id="list-view-btn" class="view-btn p-2 rounded-md" title="عرض قائمة"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg></button>
+                    </div>
+                </div>
+                 <div class="flex-grow flex items-center gap-2">
+                    <span class="text-gray-400">ترتيب حسب:</span>
+                    <select id="sort-select" class="w-full md:w-auto bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <option value="default">الترتيب الافتراضي</option>
+                        <option value="newest">الأحدث أولاً</option>
+                        <option value="alpha-asc">أبجدي: أ - ي</option>
+                        <option value="alpha-desc">أبجدي: ي - أ</option>
+                    </select>
+                </div>
+            </div>
+            <div id="books-container-wrapper">
+                <div id="books-container"></div>
+                <div id="no-results" class="text-center text-gray-500 text-xl mt-10 hidden"><p>لم يتم العثور على نتائج.</p></div>
+            </div>
+        </main>
+    </div>
+    
+    <nav id="side-menu" class="fixed top-0 right-0 h-full w-72 bg-gray-800 shadow-2xl z-[120] p-6">
+        <button id="close-menu-btn" class="absolute top-4 left-4 p-2 text-gray-400 hover:text-white">
+             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <h2 class="text-white text-2xl font-bold mb-8">القائمة</h2>
+        <ul class="space-y-2">
+            <li>
+                <a href="#" id="show-bookmarks-btn-menu" class="flex items-center gap-3 text-lg text-gray-300 hover:text-yellow-400 transition-colors py-2 rounded-md">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                    <span>المحفوظات</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" id="request-book-btn" class="flex items-center gap-3 text-lg text-gray-300 hover:text-yellow-400 transition-colors py-2 rounded-md">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    <span>اطلب كتاب (قريباً)</span>
+                </a>
+            </li>
+            <li class="pt-2 mt-2 border-t border-gray-700"></li>
+            <li>
+                <a href="#" id="settings-btn" class="flex items-center gap-3 text-lg text-gray-300 hover:text-yellow-400 transition-colors py-2 rounded-md">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span>الإعدادات</span>
+                </a>
+            </li>
+             <li>
+                <a href="#" id="about-btn" class="flex items-center gap-3 text-lg text-gray-300 hover:text-yellow-400 transition-colors py-2 rounded-md">
+                   <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>عن المكتبة</span>
+                </a>
+            </li>
+            <li>
+                <a href="CONTACT.html" id="contact-btn" class="flex items-center gap-3 text-lg text-gray-300 hover:text-yellow-400 transition-colors py-2 rounded-md">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    <span>اتصل بنا</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-60 z-[115] hidden"></div>
+
+
+    <div id="reader-view" class="hidden fixed inset-0 flex flex-col bg-gray-800">
+        <div class="flex justify-between items-center p-2 border-b border-gray-700 flex-shrink-0 z-10 bg-gray-800">
+            <div class="w-16 text-right">
+                <button id="reader-menu-toggle" class="p-2 rounded-full hover:bg-gray-700 text-white inline-block">
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+            <div class="flex-grow text-center min-w-0">
+                <h2 id="reader-book-title" class="text-md sm:text-lg font-bold text-white mx-auto truncate"></h2>
+            </div>
+            <div class="w-16 text-left">
+                 <button id="close-reader-btn" class="p-2 rounded-full hover:bg-red-500 inline-block" title="إغلاق"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+        </div>
+        <div id="reader-container" class="flex-grow flex overflow-hidden">
+            <div id="reader-content-primary" class="reader-content-area w-full h-full overflow-y-auto p-4 sm:p-8 book-content theme-dark"></div>
+        </div>
+        <div class="flex justify-between items-center p-2 border-t border-gray-700 flex-shrink-0 z-10 bg-gray-800">
+            <button id="prev-page-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">السابق</button>
+            <div class="flex items-center gap-2 text-gray-400 text-xs sm:text-sm">
+                <span id="volume-title-footer" class="hidden sm:inline"></span>
+                <span>صفحة</span>
+                <input type="number" id="page-jump-input" min="1">
+                <span id="total-pages-footer"></span>
+            </div>
+            <button id="next-page-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">التالي</button>
+        </div>
+        
+        <nav id="reader-sidebar" class="fixed top-0 right-0 h-full w-72 bg-gray-800 shadow-2xl z-[160] p-6">
+            <button id="close-reader-sidebar-btn" class="absolute top-4 left-4 p-2 text-gray-400 hover:text-white">
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-white text-2xl font-bold mb-8">الإعدادات</h2>
+            <div class="space-y-6">
+                <div>
+                    <span class="text-sm text-gray-400 px-2">السمة</span>
+                    <div class="flex justify-around mt-2 bg-gray-700 p-1 rounded-lg">
+                        <button class="theme-btn p-2 rounded-md flex-1 text-center hover:bg-gray-600" data-theme="theme-dark" title="داكن">🌙</button>
+                        <button class="theme-btn p-2 rounded-md flex-1 text-center hover:bg-gray-600" data-theme="theme-light" title="فاتح">☀️</button>
+                        <button class="theme-btn p-2 rounded-md flex-1 text-center hover:bg-gray-600" data-theme="theme-sepia" title="بني">☕</button>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-400 px-2">حجم الخط</span>
+                    <div class="flex justify-around mt-2 bg-gray-700 p-1 rounded-lg">
+                        <button id="decrease-font" class="w-1/2 p-2 rounded-md hover:bg-gray-600 font-bold" title="تصغير الخط">A-</button>
+                        <button id="increase-font" class="w-1/2 p-2 rounded-md hover:bg-gray-600 font-bold" title="تكبير الخط">A+</button>
+                    </div>
+                </div>
+                <ul class="space-y-2 pt-4 border-t border-gray-700">
+                    <li>
+                        <a href="#" id="fullscreen-btn" class="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-200 hover:bg-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 110 2H5v3a1 1 0 11-2 0V4zm14 0a1 1 0 00-1-1h-4a1 1 0 100 2h3v3a1 1 0 102 0V4zM4 17a1 1 0 001 1h4a1 1 0 100-2H5v-3a1 1 0 10-2 0v4zm12 0a1 1 0 001-1v-4a1 1 0 10-2 0v3h-3a1 1 0 100 2h4z" clip-rule="evenodd"></path></svg>
+                            <span>ملء الشاشة</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="speech-btn" class="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-200 hover:bg-gray-700">
+                            <svg id="speech-play-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                            <svg id="speech-pause-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                            <span>استماع</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="toc-btn" class="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-200 hover:bg-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 5h10v10H5V5z"></path><path d="M7 7h6v2H7V7zm0 4h6v2H7v-2z"></path></svg>
+                            <span>الفهرس</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="bookmark-page-btn" class="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-200 hover:bg-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                            <span>حفظ الصفحة</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        <div id="reader-menu-overlay" class="fixed inset-0 bg-black bg-opacity-60 z-[155] hidden"></div>
+    </div>
+
+    <!-- Modals and Overlays -->
+    <div id="volumes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4"></div>
+    <div id="toc-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4"></div>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[130] hidden items-center justify-center flex-col">
+        <div id="spinner-container" class="flex flex-col items-center justify-center">
+             <div class="loader"></div>
+             <p id="spinner-text" class="text-yellow-400 mt-4 text-center"></p>
+        </div>
+    </div>
+    
+    <div id="bookmarks-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
+        <div class="modal-content bg-gray-800 w-full max-w-2xl rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white">المحفوظات</h2>
+                <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="flex border-b border-gray-700">
+                <button class="flex-1 p-3 text-center font-semibold bookmark-tab-btn active" data-tab="saved-books-tab">الكتب المحفوظة</button>
+                <button class="flex-1 p-3 text-center font-semibold bookmark-tab-btn" data-tab="page-bookmarks-tab">الصفحات المحفوظة</button>
+            </div>
+            <div class="p-4 overflow-y-auto">
+                <div id="saved-books-tab" class="bookmark-tab-content space-y-3"></div>
+                <div id="page-bookmarks-tab" class="bookmark-tab-content hidden space-y-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="share-modal" class="fixed inset-0 bg-black bg-opacity-90 z-[140] hidden flex items-center justify-center p-4">
+        <div class="relative w-full max-w-sm">
+            <div id="share-content-wrapper">
+                 <div id="share-content" class="bg-[#2d3748] aspect-[9/16] p-8 flex flex-col justify-center items-center text-center text-white relative rounded-lg">
+                    <p id="share-hadith-text" class="text-xl md:text-2xl mb-6 w-full" style="line-height: 1.7;"></p>
+                    <p id="share-hadith-source" class="text-yellow-400 text-base md:text-lg mb-12"></p>
+                    <div class="absolute bottom-6 w-full px-6 flex flex-col items-center">
+                       <img src="logo.png" alt="Logo" class="h-14 mb-2">
+                       <p class="text-lg font-bold text-white mt-1 mb-1">مكتبة صوارم حيدرية</p>
+                       <p id="share-url" class="text-sm text-gray-400"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-center gap-4">
+                 <button id="download-share-btn" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition-colors">تحميل الصورة</button>
+                 <button id="web-share-btn" class="bg-blue-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">مشاركة</button>
+            </div>
+             <button id="close-share-modal-btn" class="absolute -top-3 -left-3 z-10 h-8 w-8 bg-red-600 rounded-full text-white flex items-center justify-center text-lg font-bold">&times;</button>
+        </div>
+    </div>
+
+    <div id="description-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
+        <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 id="description-modal-title" class="text-xl font-bold text-white">وصف الكتاب</h2>
+                <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div id="description-modal-content" class="p-6 overflow-y-auto text-gray-300" style="line-height: 1.8;"></div>
+        </div>
+    </div>
+
+    <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
+        <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white">عن المكتبة</h2>
+                <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 overflow-y-auto text-gray-300 space-y-4">
+                <p>مكتبة صوارم حيدرية هي مكتبة إلكترونية تهدف لتوفير المصادر والكتب الشيعية بطريقة سهلة وميسرة للقراءة والبحث.</p>
+                <p><strong>الإصدار:</strong> 2.1.0</p>
+                <a href="#" class="text-yellow-400 hover:underline">رابط خارجي (سيتم تخصيصه لاحقاً)</a>
+            </div>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[110] hidden flex items-center justify-center p-4">
+        <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white">الإعدادات العامة</h2>
+                <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 overflow-y-auto text-gray-300 space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-2">تغيير خط المكتبة</h3>
+                    <div id="font-selection" class="flex flex-col sm:flex-row gap-2">
+                        <button class="font-btn flex-1 p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors" data-font="'Cairo', sans-serif">
+                            <span style="font-family: 'Cairo', sans-serif;">خط كايرو</span>
+                        </button>
+                        <button class="font-btn flex-1 p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors" data-font="'Tajawal', sans-serif">
+                            <span style="font-family: 'Tajawal', sans-serif;">خط تجوال (الافتراضي)</span>
+                        </button>
+                        <button class="font-btn flex-1 p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors" data-font="'Almarai', sans-serif">
+                             <span style="font-family: 'Almarai', sans-serif;">خط المراعي</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const mainView = document.getElementById('main-view');
+        const readerView = document.getElementById('reader-view');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const booksContainer = document.getElementById('books-container');
+        const noResults = document.getElementById('no-results');
+        const sortSelect = document.getElementById('sort-select');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const gridViewBtn = document.getElementById('grid-view-btn');
+        const listViewBtn = document.getElementById('list-view-btn');
+        
+        const loadingScreen = document.getElementById('loading-screen');
+        const animatedHeaderWrapper = document.getElementById('animated-header-wrapper');
+        const headerPlaceholder = document.getElementById('header-placeholder');
+        
+        const menuToggleBtn = document.getElementById('menu-toggle-btn');
+        const sideMenu = document.getElementById('side-menu');
+        const closeMenuBtn = document.getElementById('close-menu-btn');
+        const menuOverlay = document.getElementById('menu-overlay');
+        
+        const showBookmarksBtnMenu = document.getElementById('show-bookmarks-btn-menu');
+        const settingsBtn = document.getElementById('settings-btn');
+        const aboutBtn = document.getElementById('about-btn');
+
+        const readerSidebar = document.getElementById('reader-sidebar');
+        const readerMenuOverlay = document.getElementById('reader-menu-overlay');
+        
+        const bookmarksModal = document.getElementById('bookmarks-modal');
+        const descriptionModal = document.getElementById('description-modal');
+        const aboutModal = document.getElementById('about-modal');
+        const settingsModal = document.getElementById('settings-modal');
+
+        let allBooks = [];
+        let currentBookInfo = null;
+        let currentVolumeNumber = 1;
+        let currentPageNumber = 1;
+        let currentFontSize = 18;
+        let currentBookPartVolumes = []; 
+        let currentVolumeIndexInPart = 0; 
+        let currentView = 'grid';
+        let utterance = null;
+        let isSpeaking = false;
+        let arabicVoice = null;
+        let currentHadithForShare = { text: '', source: '' };
+
+        function applySavedFont() {
+            const savedFont = localStorage.getItem('sawarim_font') || "'Tajawal', sans-serif";
+            document.body.style.setProperty('font-family', savedFont, 'important');
+            document.querySelectorAll('.font-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.font === savedFont);
+            });
+             if (!localStorage.getItem('sawarim_font')) {
+                 document.querySelector('.font-btn[data-font*="Tajawal"]')?.classList.add('active');
+            }
+        }
+        
+        async function loadRandomHadith() {
+            try {
+                const res = await fetch('./data/hadith.json?v=' + new Date().getTime());
+                if (!res.ok) throw new Error(`Failed to load hadith.json: ${res.status} ${res.statusText}`);
+                const hadiths = await res.json();
+                const randomHadith = hadiths[Math.floor(Math.random() * hadiths.length)];
+                if (!randomHadith || !randomHadith.hadith || !randomHadith.source || !randomHadith.source.name) {
+                     throw new Error('Invalid hadith object format in JSON file.');
+                }
+                document.getElementById('hadith-text-content').textContent = randomHadith.hadith;
+                currentHadithForShare.text = randomHadith.hadith;
+                currentHadithForShare.source = randomHadith.source.name;
+
+                const sourceEl = document.getElementById('hadith-source');
+                sourceEl.textContent = randomHadith.source.name;
+                sourceEl.onclick = () => {
+                    handleBookClick(
+                        randomHadith.source.bookId, 
+                        randomHadith.source.volumeNumber, 
+                        randomHadith.source.pageNumber, 
+                        randomHadith.source.highlightText
+                    );
+                };
+            } catch (error) {
+                console.error("Could not load or display Hadith:", error);
+                const defaultHadith = "قَالَ رَسُولُ اللهِ (ص): مَنْ كُنْتُ مَوْلَاهُ فَهَذا عَلِيٌّ مَوْلَاهُ";
+                const defaultSource = "حديث الغدير";
+                document.getElementById('hadith-text-content').textContent = defaultHadith;
+                document.getElementById('hadith-source').textContent = defaultSource;
+                currentHadithForShare.text = defaultHadith;
+                currentHadithForShare.source = defaultSource;
+                document.getElementById('hadith-source').style.cursor = 'default';
+                document.getElementById('hadith-source').onclick = null;
+            }
+        }
+
+        function startMainContentAnimation() {
+            mainView.classList.remove('invisible');
+            animatedHeaderWrapper.classList.add('animated'); 
+            const loadingScreenEl = document.getElementById('loading-screen');
+            if (loadingScreenEl) {
+                loadingScreenEl.style.opacity = '0';
+                setTimeout(() => {
+                    if(loadingScreenEl) loadingScreenEl.remove();
+                    headerPlaceholder.appendChild(animatedHeaderWrapper);
+                    animatedHeaderWrapper.classList.add('settled');
+                }, 1500);
+            }
+        }
+
+        function setupSideMenu() {
+            const openMenu = () => {
+                sideMenu.classList.add('open');
+                menuOverlay.classList.remove('hidden');
+                menuOverlay.style.opacity = '1';
+            };
+            const closeMenu = () => {
+                sideMenu.classList.remove('open');
+                menuOverlay.style.opacity = '0';
+                setTimeout(() => menuOverlay.classList.add('hidden'), 300);
+            };
+            menuToggleBtn.onclick = openMenu;
+            closeMenuBtn.onclick = closeMenu;
+            menuOverlay.onclick = closeMenu;
+            
+            showBookmarksBtnMenu.onclick = (e) => { e.preventDefault(); closeMenu(); openBookmarksModal(); };
+            aboutBtn.onclick = (e) => { e.preventDefault(); closeMenu(); aboutModal.style.display = 'flex'; };
+            settingsBtn.onclick = (e) => { e.preventDefault(); closeMenu(); settingsModal.style.display = 'flex'; };
+        }
+
+        const fetchMasterList = () => fetch('./data/books.json')
+            .then(res => res.ok ? res.json() : Promise.reject(`HTTP error! status: ${res.status}`))
+            .catch(err => { 
+                console.error("Could not load master list:", err);
+                booksContainer.innerHTML = '<p class="text-center text-red-400">فشل تحميل قائمة الكتب.</p>';
+                return [];
+            });
+        
+       async function fetchBookDataForReading(bookInfo, absoluteVolumeNumber = 1) {
+            showLoader(true, '...جاري التحميل');
+            let fileToFetch;
+            if (bookInfo.parts && bookInfo.parts.length > 0) {
+                const partInfo = bookInfo.parts.find(p => absoluteVolumeNumber >= p.startVolume && absoluteVolumeNumber <= p.endVolume);
+                if (!partInfo) {
+                    console.error(`Could not find part for volume ${absoluteVolumeNumber}`);
+                    showLoader(false);
+                    return null;
+                }
+                fileToFetch = partInfo.file;
+            } else {
+                fileToFetch = `book_${bookInfo.id}.json`;
+            }
+
+            try {
+                const response = await fetch(`./data/${fileToFetch}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${fileToFetch}`);
+                return await response.json();
+            } catch (err) {
+                console.error(`Error fetching book data:`, err);
+                return null;
+            } finally {
+                showLoader(false);
+            }
+        }
+
+
+        const showLoader = (show, text = '') => {
+            const spinnerContainer = document.getElementById('spinner-container');
+            const spinnerText = document.getElementById('spinner-text');
+            
+            if (show) {
+                spinnerContainer.classList.remove('hidden');
+                spinnerText.textContent = text;
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
+            } else {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        };
+
+        const getBookmarks = () => JSON.parse(localStorage.getItem('sawarim_bookmarks_v4')) || { savedBooks: [], pageProgress: {}, pageBookmarks: [] };
+        const saveBookmarks = (bookmarks) => localStorage.setItem('sawarim_bookmarks_v4', JSON.stringify(bookmarks));
+        
+        function loadAndFindArabicVoice() {
+            if (!('speechSynthesis' in window)) return;
+            const setVoice = () => {
+                arabicVoice = speechSynthesis.getVoices().find(voice => voice.lang.startsWith('ar'));
+            };
+            setVoice();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = setVoice;
+            }
+        }
+
+        function stopSpeech() {
+            if ('speechSynthesis' in window && speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            isSpeaking = false;
+            updateSpeechButton();
+        }
+
+        function updateSpeechButton() {
+            const playIcon = readerView.querySelector('#speech-play-icon');
+            const pauseIcon = readerView.querySelector('#speech-pause-icon');
+            if(!playIcon || !pauseIcon) return;
+            playIcon.classList.toggle('hidden', isSpeaking);
+            pauseIcon.classList.toggle('hidden', !isSpeaking);
+        }
+
+        function closeReader() {
+            stopSpeech();
+            readerView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            document.body.style.overflow = 'auto';
+            const [base, ] = window.location.href.split('#');
+            history.pushState(null, "", base);
+        }
+
+        function openReader(bookInfo, volumesData, relativeVolumeIndex, pageNumber = null, highlightText = null) {
+            mainView.classList.add('hidden');
+            readerView.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            currentBookInfo = bookInfo;
+            currentBookPartVolumes = volumesData;
+            currentVolumeIndexInPart = relativeVolumeIndex; 
+            const volume = currentBookPartVolumes[currentVolumeIndexInPart];
+            
+            if(!volume || !volume.content){
+                alert('خطأ: لم يتم العثور على محتوى الجزء المحدد.');
+                closeReader();
+                return;
+            }
+            currentVolumeNumber = volume.volumeNumber;
+            readerView.querySelector('#reader-book-title').textContent = bookInfo.title;
+            readerView.querySelector('#reader-content-primary').style.fontSize = `${currentFontSize}px`;
+            
+            const bookmarks = getBookmarks();
+            const bookmarkKey = `${bookInfo.id}-${currentVolumeNumber}`;
+            let targetPageNum = pageNumber ? parseInt(pageNumber, 10) : (bookmarks.pageProgress[bookmarkKey] || 1);
+            
+            let pageIndexInVolume = volume.content.findIndex(p => p.pageNumber == targetPageNum);
+            if (pageIndexInVolume === -1) pageIndexInVolume = 0;
+            
+            displayPage(pageIndexInVolume, highlightText);
+            attachReaderEventListeners();
+        }
+        
+       function displayPage(pageIndexInVolume, highlightText = null) {
+            const volume = currentBookPartVolumes[currentVolumeIndexInPart];
+            if (!volume || !volume.content || pageIndexInVolume >= volume.content.length || pageIndexInVolume < 0) return;
+            
+            stopSpeech();
+            currentPageNumber = volume.content[pageIndexInVolume].pageNumber;
+            
+            let textContent = volume.content[pageIndexInVolume].text.replace(/\n/g, '<br>');
+
+            let pageHTML = `<h4 class="text-lg text-yellow-400 mb-4 font-semibold">${volume.content[pageIndexInVolume].chapter || ''}</h4><p>${textContent}</p>`;
+
+            // Highlight logic
+            if (highlightText) {
+                const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const flexibleHighlightText = escapeRegExp(highlightText).trim().split(/\s+/).join('(\\s|<br>)*');
+
+                try {
+                    pageHTML = pageHTML.replace(
+                        new RegExp(flexibleHighlightText, 'gi'), 
+                        (match) => `<mark>${match}</mark>`
+                    );
+                } catch(e) { console.error("Highlighting regex error:", e); }
+            }
+            
+            const contentArea = readerView.querySelector('#reader-content-primary');
+            contentArea.innerHTML = pageHTML;
+            
+            const highlightedElement = contentArea.querySelector('mark');
+            if (highlightedElement) {
+                setTimeout(() => highlightedElement.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+            } else {
+                contentArea.scrollTop = 0;
+            }
+
+            const pageJumpInput = readerView.querySelector('#page-jump-input');
+            pageJumpInput.value = currentPageNumber;
+            const lastPage = volume.content[volume.content.length - 1]?.pageNumber || 0;
+            readerView.querySelector('#volume-title-footer').textContent = volume.volumeTitle;
+            readerView.querySelector('#total-pages-footer').textContent = `من ${lastPage}`;
+            pageJumpInput.max = lastPage;
+            
+            const prevBtn = readerView.querySelector('#prev-page-btn');
+            const nextBtn = readerView.querySelector('#next-page-btn');
+            prevBtn.onclick = () => { if (pageIndexInVolume > 0) displayPage(pageIndexInVolume - 1, highlightText); };
+            nextBtn.onclick = () => { if (pageIndexInVolume < volume.content.length - 1) displayPage(pageIndexInVolume + 1, highlightText); };
+            prevBtn.disabled = pageIndexInVolume === 0;
+            prevBtn.classList.toggle('disabled-btn', pageIndexInVolume === 0);
+            nextBtn.disabled = pageIndexInVolume === volume.content.length - 1;
+            nextBtn.classList.toggle('disabled-btn', pageIndexInVolume === volume.content.length - 1);
+            
+            const newHash = `#/book/${currentBookInfo.id}/volume/${currentVolumeNumber}/page/${currentPageNumber}${highlightText ? '?highlight=' + encodeURIComponent(highlightText) : ''}`;
+            if(window.location.hash !== newHash) {
+                history.pushState(null, '', newHash);
+            }
+            
+            let bookmarks = getBookmarks();
+            bookmarks.pageProgress[`${currentBookInfo.id}-${currentVolumeNumber}`] = currentPageNumber;
+            saveBookmarks(bookmarks);
+            updateBookmarkButtonState();
+        }
+
+        function attachReaderEventListeners() {
+            readerView.querySelector('#close-reader-btn').onclick = closeReader;
+
+            const readerMenuToggle = readerView.querySelector('#reader-menu-toggle');
+            const closeReaderSidebarBtn = document.getElementById('close-reader-sidebar-btn');
+
+            const openReaderSidebar = () => {
+                readerSidebar.classList.add('open');
+                readerMenuOverlay.classList.remove('hidden');
+                readerMenuOverlay.style.opacity = '1';
+            };
+            const closeReaderSidebar = () => {
+                readerSidebar.classList.remove('open');
+                readerMenuOverlay.style.opacity = '0';
+                setTimeout(() => readerMenuOverlay.classList.add('hidden'), 300);
+            };
+
+            if (readerMenuToggle) readerMenuToggle.onclick = openReaderSidebar;
+            if (closeReaderSidebarBtn) closeReaderSidebarBtn.onclick = closeReaderSidebar;
+            if (readerMenuOverlay) readerMenuOverlay.onclick = closeReaderSidebar;
+
+            readerSidebar.querySelector('#fullscreen-btn').onclick = (e) => { e.preventDefault(); toggleFullScreen(); closeReaderSidebar(); };
+            readerSidebar.querySelector('#toc-btn').onclick = (e) => { e.preventDefault(); openToc(); closeReaderSidebar(); };
+            readerSidebar.querySelector('#speech-btn').onclick = (e) => { e.preventDefault(); handleSpeech(); };
+            readerSidebar.querySelector('#bookmark-page-btn').onclick = (e) => { e.preventDefault(); togglePageBookmark(); closeReaderSidebar(); };
+            
+            readerSidebar.querySelector('#increase-font').onclick = () => { if(currentFontSize < 32) { currentFontSize += 2; document.getElementById('reader-content-primary').style.fontSize = `${currentFontSize}px`; } };
+            readerSidebar.querySelector('#decrease-font').onclick = () => { if(currentFontSize > 12) { currentFontSize -= 2; document.getElementById('reader-content-primary').style.fontSize = `${currentFontSize}px`; } };
+            
+            readerView.querySelector('#page-jump-input').onchange = (e) => {
+                const highlightParam = new URLSearchParams(window.location.hash.split('?')[1] || '').get('highlight');
+                const targetPage = parseInt(e.target.value, 10);
+                const newPageIndex = currentBookPartVolumes[currentVolumeIndexInPart].content.findIndex(p => p.pageNumber === targetPage);
+                if (newPageIndex !== -1) displayPage(newPageIndex, highlightParam);
+            };
+            readerSidebar.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.reader-content-area').forEach(area => {
+                         area.className = area.className.replace(/theme-\w+/g, '') + ` ${btn.dataset.theme}`;
+                    });
+                }
+            });
+        }
+        
+        function handleSpeech() {
+            if (!('speechSynthesis' in window)) { alert('عذراً، متصفحك لا يدعم ميزة الاستماع الصوتي.'); return; }
+            if (isSpeaking) {
+                speechSynthesis.pause(); isSpeaking = false;
+            } else {
+                if (speechSynthesis.paused) { speechSynthesis.resume(); } 
+                else {
+                    if (!arabicVoice) { alert('عذراً، لم يتم العثور على صوت عربي.'); return; }
+                    utterance = new SpeechSynthesisUtterance(readerView.querySelector('#reader-content-primary').innerText);
+                    utterance.voice = arabicVoice;
+                    utterance.lang = arabicVoice.lang;
+                    utterance.onend = () => { isSpeaking = false; updateSpeechButton(); };
+                    speechSynthesis.speak(utterance);
+                }
+                isSpeaking = true;
+            }
+            updateSpeechButton();
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); } 
+            else { document.exitFullscreen(); }
+        }
+        
+        function sortAndRender(booksToRender = allBooks) {
+            const sortValue = sortSelect.value;
+            let sortedBooks = [...booksToRender];
+            if (sortValue === 'newest') sortedBooks.reverse();
+            else if (sortValue === 'alpha-asc') sortedBooks.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+            else if (sortValue === 'alpha-desc') sortedBooks.sort((a, b) => b.title.localeCompare(a.title, 'ar'));
+            renderBooks(sortedBooks);
+        }
+        
+        function openDescriptionModal(book) {
+            document.getElementById('description-modal-title').textContent = `عن كتاب: ${book.title}`;
+            document.getElementById('description-modal-content').innerHTML = `<p>${book.description}</p>`;
+            descriptionModal.style.display = 'flex';
+        }
+
+        function renderBooks(booksToRender) {
+            booksContainer.innerHTML = '';
+            noResults.classList.toggle('hidden', booksToRender.length > 0);
+            booksContainer.className = currentView === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6' : 'flex flex-col gap-4';
+            const bookmarks = getBookmarks();
+            booksToRender.forEach(book => {
+                const isSaved = bookmarks.savedBooks.includes(book.id);
+                const el = document.createElement('div'); // Always use div as wrapper for click handling
+                el.className = currentView === 'grid' 
+                    ? "bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer group h-full flex flex-col"
+                    : "bg-gray-800 rounded-lg shadow-lg flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-700 transition-colors";
+                
+                const buttonsHTML = `
+                    <button class="info-book-btn p-2 rounded-full bg-gray-700/50 text-white hover:bg-blue-500" data-book-id="${book.id}" title="وصف الكتاب">
+                        <svg class="h-5 w-5 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <button class="save-book-btn p-2 rounded-full ${isSaved ? 'bg-red-500' : 'bg-gray-700/50'} text-white hover:bg-red-500" data-book-id="${book.id}" title="حفظ الكتاب">
+                        <svg class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+                    </button>`;
+
+                if (currentView === 'grid') {
+                    el.innerHTML = `
+                        <div class="relative">
+                            <img src="${book.cover}" alt="${book.title}" class="w-full h-64 object-cover" onerror="this.src='https://placehold.co/300x450/111827/FFFFFF?text=Error';">
+                             <div class="absolute top-2 right-2">${buttonsHTML.replace('info-book-btn', 'hidden')}</div>
+                             <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                <span class="text-white text-xl font-bold">اقرأ الآن</span>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow flex flex-col">
+                            <div class="flex-grow">
+                                <h3 class="font-bold text-lg text-white">${book.title}</h3>
+                                <p class="text-gray-400 text-sm">${book.author}</p>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-700/50">
+                                ${buttonsHTML.replace('save-book-btn', 'hidden')}
+                            </div>
+                        </div>`;
+                } else { // List view
+                    el.innerHTML = `
+                        <img src="${book.cover}" alt="${book.title}" class="w-20 h-28 object-cover rounded-md flex-shrink-0" onerror="this.src='https://placehold.co/80x112/111827/FFFFFF?text=Error';">
+                        <div class="flex-grow">
+                            <h3 class="font-bold text-lg text-white">${book.title}</h3>
+                            <p class="text-gray-400 text-sm">${book.author}</p>
+                        </div>
+                        <div class="flex flex-col gap-2 self-start">${buttonsHTML}</div>`;
+                }
+                
+                    el.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) {
+                         handleBookClick(book.id);
+                    }
+                });
+                el.querySelector('.save-book-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleSaveBook(book.id); });
+                el.querySelector('.info-book-btn').addEventListener('click', (e) => { e.stopPropagation(); openDescriptionModal(book); });
+                
+                booksContainer.appendChild(el);
+            });
+        }
+
+
+        function toggleSaveBook(bookId) {
+            let bookmarks = getBookmarks();
+            const index = bookmarks.savedBooks.indexOf(bookId);
+            if (index > -1) bookmarks.savedBooks.splice(index, 1);
+            else bookmarks.savedBooks.push(bookId);
+            saveBookmarks(bookmarks);
+            
+            if (!searchInput.value) {
+                sortAndRender();
+            } else {
+                 const btn = document.querySelector(`.save-book-btn[data-book-id="${bookId}"]`);
+                 if(btn) btn.classList.toggle('bg-red-500', index === -1);
+            }
+        }
+
+       async function handleBookClick(bookId, directVolumeNumber = null, pageNumber = null, highlightText = null) {
+            const bookInfo = allBooks.find(b => b.id == bookId);
+            if (!bookInfo) return;
+
+            // Combined check for both multipart books (like Bihar al-Anwar) and simple multivolume books (like Al-Kafi)
+            if (!directVolumeNumber && ((bookInfo.parts && bookInfo.totalVolumes > 1) || (bookInfo.volumes && bookInfo.volumes.length > 1))) {
+                 openVolumeSelector(bookInfo);
+                 return;
+            }
+            
+            showLoader(true, '...جاري التحميل');
+            try {
+                const bookData = await fetchBookDataForReading(bookInfo, directVolumeNumber || 1);
+                if (!bookData) {
+                    alert('لا يمكن تحميل هذا الكتاب حالياً.');
+                    return;
+                }
+                
+                const volumes = bookData.volumes || [bookData];
+
+                // This logic is for books where volume definitions are inside the file, not in books.json
+                if (!directVolumeNumber && volumes.length > 1) {
+                    openVolumeSelector(bookInfo, volumes.map((v,i) => ({...v, index: i})));
+                } else {
+                    if (loadingScreen && !loadingScreen.style.opacity) startMainContentAnimation();
+                    if (bookmarksModal.style.display === 'flex') bookmarksModal.style.display = 'none';
+
+                    let finalVolumeNumber = directVolumeNumber || volumes[0]?.volumeNumber || 1;
+                    let relativeIndex = volumes.findIndex(v => v.volumeNumber == finalVolumeNumber);
+                   
+                    if (relativeIndex === -1) {
+                         alert(`خطأ: الجزء ${finalVolumeNumber} غير موجود في الملف المحمل.`);
+                         return;
+                    }
+                    
+                    openReader(bookInfo, volumes, relativeIndex, pageNumber, highlightText);
+                }
+            } catch(e){
+                 console.error("Error handling book click:", e);
+                 alert("حدث خطأ غير متوقع.");
+            } finally {
+                showLoader(false);
+            }
+        }
+
+
+       function openVolumeSelector(bookInfo, volumes = null) {
+            const modal = document.getElementById('volumes-modal');
+            let buttonsHTML = '';
+
+            if (volumes) { // Case for when volumes data is passed from a fetched file
+                buttonsHTML = volumes.map((volume) => {
+                    const title = volume.volumeTitle || `الجزء ${volume.volumeNumber}`;
+                    return `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg" data-book-id="${bookInfo.id}" data-direct-volume="${volume.volumeNumber}">${title}</button>`;
+                }).join('');
+            } else if (bookInfo.parts) { // Case for multipart books defined in books.json
+                for (let i = 1; i <= bookInfo.totalVolumes; i++) {
+                    buttonsHTML += `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg" data-book-id="${bookInfo.id}" data-direct-volume="${i}">الجزء ${i}</button>`;
+                }
+            } else if (bookInfo.volumes) { // Case for simple multivolume books in books.json
+                 buttonsHTML = bookInfo.volumes.map((volume) => {
+                    const title = volume.volumeTitle || `الجزء ${volume.volumeNumber}`;
+                    return `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg" data-book-id="${bookInfo.id}" data-direct-volume="${volume.volumeNumber}">${title}</button>`;
+                }).join('');
+            }
+
+            modal.innerHTML = `<div class="modal-content bg-gray-800 w-full max-w-md rounded-lg shadow-xl flex flex-col max-h-[90vh]"><div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">اختر جزء من: ${bookInfo.title}</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-4 space-y-2 overflow-y-auto">${buttonsHTML}</div></div>`;
+            modal.style.display = 'flex';
+            modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
+            
+            modal.querySelectorAll('button[data-direct-volume]').forEach(btn => {
+                btn.onclick = () => {
+                    modal.style.display = 'none';
+                    // Use hash navigation to correctly load the selected volume
+                    window.location.hash = `#/book/${btn.dataset.bookId}/volume/${btn.dataset.directVolume}/page/1`;
+                };
+            });
+        }
+        
+        function openToc() {
+            const modal = document.getElementById('toc-modal');
+            const volume = currentBookPartVolumes[currentVolumeIndexInPart];
+            if (!volume || !volume.content) return;
+            const chapters = [...new Map(volume.content.map((p, i) => [p.chapter?.trim(), i])).entries()];
+            modal.innerHTML = `<div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]"><div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">فهرس الأبواب</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-4 space-y-2 overflow-y-auto">${chapters.map(([title, index]) => `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg" data-page-index="${index}">${title || 'بداية الجزء'}</button>`).join('')}</div></div>`;
+            modal.style.display = 'flex';
+            modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
+            modal.querySelectorAll('[data-page-index]').forEach(btn => btn.onclick = () => { displayPage(parseInt(btn.dataset.pageIndex)); modal.style.display = 'none'; });
+        }
+
+        function updateBookmarkButtonState() {
+            const btn = document.getElementById('bookmark-page-btn');
+            if (!currentBookInfo) return;
+            const isSaved = getBookmarks().pageBookmarks.some(bm => bm.bookId === currentBookInfo.id && bm.volumeNumber === currentVolumeNumber && bm.pageNumber === currentPageNumber);
+            btn.classList.toggle('saved', isSaved);
+        }
+
+        function togglePageBookmark() {
+            if (!currentBookInfo) return;
+            let bookmarks = getBookmarks();
+            const index = bookmarks.pageBookmarks.findIndex(bm => bm.bookId === currentBookInfo.id && bm.volumeNumber === currentVolumeNumber && bm.pageNumber === currentPageNumber);
+            if (index > -1) bookmarks.pageBookmarks.splice(index, 1);
+            else bookmarks.pageBookmarks.push({ bookId: currentBookInfo.id, bookTitle: currentBookInfo.title, volumeNumber: currentVolumeNumber, pageNumber: currentPageNumber, date: new Date().toISOString() });
+            saveBookmarks(bookmarks);
+            updateBookmarkButtonState();
+        }
+
+        function openBookmarksModal() {
+            const bookmarks = getBookmarks();
+            const bookInfos = bookmarks.savedBooks.map(id => allBooks.find(b => b.id === id)).filter(Boolean);
+            document.getElementById('saved-books-tab').innerHTML = bookInfos.length ? bookInfos.map(b => bookmarkItemHTML(b.title, b.author, {'data-book-id': b.id}, 'open-saved-book-btn', 'delete-saved-book-btn')).join('') : '<p class="text-center text-gray-400">لم تقم بحفظ أي كتب.</p>';
+            document.getElementById('page-bookmarks-tab').innerHTML = bookmarks.pageBookmarks.length ? bookmarks.pageBookmarks.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(bm => bookmarkItemHTML(bm.bookTitle, `الجزء ${bm.volumeNumber} - صفحة ${bm.pageNumber}`, {'data-book-id':bm.bookId, 'data-volume-number':bm.volumeNumber, 'data-page-number':bm.pageNumber}, 'open-page-bookmark-btn', 'delete-page-bookmark-btn')).join('') : '<p class="text-center text-gray-400">لم تقم بحفظ أي صفحات.</p>';
+            bookmarksModal.style.display = 'flex';
+            attachBookmarkModalListeners();
+        }
+        
+        const bookmarkItemHTML = (title, subtitle, dataAttrs, openClass, deleteClass) => {
+            const dataString = Object.entries(dataAttrs).map(([k,v]) => `${k}="${v}"`).join(' ');
+            return `<div class="bg-gray-700 rounded-lg p-3 flex justify-between items-center"><div><p class="font-semibold text-white">${title}</p><p class="text-sm text-gray-400">${subtitle}</p></div><div class="flex items-center gap-2"><button class="${openClass} p-2 bg-yellow-500 hover:bg-yellow-600 rounded-md" ${dataString} title="فتح"><svg class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg></button><button class="${deleteClass} p-2 bg-red-600 hover:bg-red-700 rounded-md" ${dataString} title="حذف"><svg class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div>`;
+        };
+
+        function attachBookmarkModalListeners() {
+            bookmarksModal.querySelectorAll('.delete-saved-book-btn').forEach(btn => btn.onclick = () => { let b = getBookmarks(); b.savedBooks = b.savedBooks.filter(id => id !== parseInt(btn.dataset.bookId)); saveBookmarks(b); openBookmarksModal(); });
+            bookmarksModal.querySelectorAll('.open-saved-book-btn').forEach(btn => btn.onclick = () => {
+                handleBookClick(parseInt(btn.dataset.bookId));
+            });
+            bookmarksModal.querySelectorAll('.delete-page-bookmark-btn').forEach(btn => btn.onclick = () => { const { bookId, volumeNumber, pageNumber } = btn.dataset; let b = getBookmarks(); b.pageBookmarks = b.pageBookmarks.filter(bm => !(bm.bookId == bookId && bm.volumeNumber == volumeNumber && bm.pageNumber == pageNumber)); saveBookmarks(b); openBookmarksModal(); });
+            bookmarksModal.querySelectorAll('.open-page-bookmark-btn').forEach(btn => btn.onclick = () => { 
+                const { bookId, volumeNumber, pageNumber } = btn.dataset;
+                handleBookClick(parseInt(bookId), parseInt(volumeNumber), parseInt(pageNumber));
+            });
+        }
+
+        function handleSimpleSearch() {
+            const query = searchInput.value.toLowerCase();
+            const filteredBooks = query ? allBooks.filter(b => b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query)) : allBooks;
+            sortAndRender(filteredBooks);
+        }
+
+        async function handleUrlNavigation() {
+            const hash = window.location.hash;
+            if (!hash) {
+                if (readerView.classList.contains('hidden') === false) closeReader();
+                return;
+            }; 
+
+            const [hashPath, hashQuery] = hash.split('?');
+            const params = new URLSearchParams(hashQuery || '');
+            const highlight = decodeURIComponent(params.get('highlight') || '');
+            const pageMatch = hashPath.match(/#\/book\/(\d+)\/volume\/(\d+)\/page\/(\d+)/);
+            const bookMatch = hashPath.match(/#\/book\/(\d+)$/);
+            
+            let bookId;
+            if (pageMatch) bookId = pageMatch[1];
+            else if (bookMatch) bookId = bookMatch[1];
+            else { 
+                return; 
+            }
+
+            const bookInfo = allBooks.find(b => b.id == bookId);
+            if (!bookInfo) {
+                alert('الكتاب المطلوب غير موجود.');
+                if(mainView.classList.contains('invisible')) {
+                    startMainContentAnimation();
+                }
+                return;
+            }
+
+            const loadingScreenEl = document.getElementById('loading-screen');
+            if (loadingScreenEl) {
+                document.getElementById('loading-indicator').style.display = 'none';
+                loadingScreenEl.style.opacity = '0';
+                setTimeout(() => { if(loadingScreenEl) loadingScreenEl.remove(); }, 1500);
+            }
+            
+            for (const modal of [bookmarksModal, descriptionModal, aboutModal, settingsModal]) {
+                 if (modal.style.display === 'flex') modal.style.display = 'none';
+            }
+            
+            if (pageMatch) {
+                 const [, bookId, volumeNumber, pageNumber] = pageMatch;
+                 handleBookClick(bookId, Number(volumeNumber), Number(pageNumber), highlight);
+            } else if (bookMatch) {
+                 const [, bookId] = bookMatch;
+                 handleBookClick(bookId, null, null, highlight); // FIX: Pass highlight parameter
+            }
+        }
+        
+        function openShareModal(text, source) {
+            const modal = document.getElementById('share-modal');
+            document.getElementById('share-hadith-text').textContent = `"${text}"`;
+            document.getElementById('share-hadith-source').textContent = source;
+            document.getElementById('share-url').textContent = window.location.hostname || 'sawarim-library.com';
+            modal.style.display = 'flex';
+        }
+
+        async function init() {
+            applySavedFont();
+            loadAndFindArabicVoice();
+            setupSideMenu();
+
+            // MODIFICATION: Auto list view on mobile
+            if (window.innerWidth < 768) {
+                currentView = 'list';
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+            }
+
+            window.addEventListener('hashchange', handleUrlNavigation);
+
+            allBooks = await fetchMasterList();
+            sortAndRender(allBooks);
+
+            await loadRandomHadith(); 
+            
+            if (window.location.hash.includes('/book/')) {
+                await handleUrlNavigation();
+            } else {
+                setTimeout(() => { document.getElementById('loading-progress').style.width = '100%'; }, 100);
+                setTimeout(() => { startMainContentAnimation(); }, 5000);
+            }
+            
+            searchBtn.onclick = handleSimpleSearch;
+            searchInput.addEventListener('keyup', (e) => e.key === 'Enter' && handleSimpleSearch());
+            sortSelect.onchange = () => {
+                const query = searchInput.value.toLowerCase();
+                const booksToRender = query ? allBooks.filter(b => b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query)) : allBooks;
+                sortAndRender(booksToRender);
+            };
+            gridViewBtn.onclick = () => { currentView = 'grid'; gridViewBtn.classList.add('active'); listViewBtn.classList.remove('active'); handleSimpleSearch(); };
+            listViewBtn.onclick = () => { currentView = 'list'; listViewBtn.classList.add('active'); gridViewBtn.classList.remove('active'); handleSimpleSearch(); };
+
+            document.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = () => btn.closest('.fixed').style.display = 'none');
+            
+            document.querySelectorAll('.bookmark-tab-btn').forEach(btn => btn.onclick = () => {
+                document.querySelectorAll('.bookmark-tab-btn').forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.bookmark-tab-content').forEach(c => c.classList.toggle('hidden', c.id !== btn.dataset.tab));
+            });
+            
+            document.querySelectorAll('.font-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const selectedFont = btn.dataset.font;
+                    document.body.style.setProperty('font-family', selectedFont, 'important');
+                    localStorage.setItem('sawarim_font', selectedFont);
+                    document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                };
+            });
+
+            const shareHadithBtn = document.getElementById('share-hadith-btn');
+            if(shareHadithBtn){
+                shareHadithBtn.onclick = () => {
+                    if (currentHadithForShare.text) {
+                        openShareModal(currentHadithForShare.text, currentHadithForShare.source);
+                    }
+                };
+            }
+
+            document.getElementById('close-share-modal-btn').onclick = () => {
+                document.getElementById('share-modal').style.display = 'none';
+            };
+
+            const shareContent = document.getElementById('share-content');
+            const downloadShareBtn = document.getElementById('download-share-btn');
+            const webShareBtn = document.getElementById('web-share-btn');
+
+            const generateAndProcessImage = async (action) => {
+                showLoader(true, '...جاري تجهيز الصورة');
+                try {
+                    const canvas = await html2canvas(shareContent, {
+                        useCORS: true,
+                        backgroundColor: '#2d3748',
+                        scale: 2 
+                    });
+                    
+                    if (action === 'download') {
+                        const link = document.createElement('a');
+                        link.download = 'hadith-share.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    } else if (action === 'share') {
+                        canvas.toBlob(async (blob) => {
+                            const file = new File([blob], 'hadith-share.png', { type: 'image/png' });
+                            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                                try {
+                                    await navigator.share({
+                                        files: [file],
+                                        title: 'حديث شريف',
+                                        text: `"${currentHadithForShare.text}" - ${currentHadithForShare.source}`
+                                    });
+                                } catch (shareErr) {
+                                    console.error('Share action was cancelled or failed', shareErr);
+                                }
+                            } else {
+                                alert('المتصفح لا يدعم مشاركة الملفات مباشرة. يرجى تحميل الصورة ومشاركتها.');
+                            }
+                        }, 'image/png');
+                    }
+                } catch (err) {
+                    console.error(`Failed to ${action} image:`, err);
+                    alert(`عذراً، حدث خطأ أثناء ${action === 'download' ? 'تحميل' : 'مشاركة'} الصورة.`);
+                } finally {
+                    showLoader(false);
+                }
+            };
+
+            downloadShareBtn.onclick = () => generateAndProcessImage('download');
+            
+            if (navigator.share) {
+                webShareBtn.onclick = () => generateAndProcessImage('share');
+            } else {
+                webShareBtn.style.display = 'none';
+            }
+        }
+        
+        init();
+    });
+    </script>
+</body>
+</html>
+
+
+
+
