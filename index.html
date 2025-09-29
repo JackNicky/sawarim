@@ -849,8 +849,7 @@
             const contentArea = document.getElementById('reader-content-primary');
             const toolbar = document.getElementById('text-selection-toolbar');
 
-            contentArea.addEventListener('mouseup', (e) => {
-                // Use a small timeout to allow the selection object to update.
+            const showToolbarOnSelection = () => {
                 setTimeout(() => {
                     const selection = window.getSelection();
                     const selectedText = selection.toString().trim();
@@ -861,16 +860,20 @@
                          hideToolbar();
                     }
                 }, 10);
-            });
+            };
 
-            // This listener ensures that if the selection is cleared by any means (e.g., clicking outside), the toolbar hides.
+            contentArea.addEventListener('mouseup', showToolbarOnSelection);
+            contentArea.addEventListener('touchend', showToolbarOnSelection);
+
             document.addEventListener('selectionchange', () => {
-                if (window.getSelection().toString().trim().length === 0) {
-                    hideToolbar();
-                }
+                // A small delay helps prevent the toolbar from disappearing while adjusting selection handles
+                setTimeout(() => {
+                    if (window.getSelection().toString().trim().length === 0) {
+                        hideToolbar();
+                    }
+                }, 200);
             });
             
-            // This handles hiding the toolbar when scrolling, which is good UX.
             contentArea.addEventListener('scroll', hideToolbar);
         }
 
@@ -1380,4 +1383,5 @@
     </script>
 </body>
 </html>
+
 
