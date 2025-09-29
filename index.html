@@ -1122,11 +1122,70 @@
             const modal = document.getElementById('toc-modal');
             const volume = currentBookPartVolumes[currentVolumeIndexInPart];
             if (!volume || !volume.content) return;
-            const chapters = [...new Map(volume.content.map((p, i) => [p.chapter?.trim(), i])).entries()];
-            modal.innerHTML = `<div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]"><div class="flex justify-between items-center p-4 border-b border-gray-700"><h2 class="text-xl font-bold text-white">فهرس الأبواب</h2><button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-4 space-y-2 overflow-y-auto">${chapters.map(([title, index]) => `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg" data-page-index="${index}">${title || 'بداية الجزء'}</button>`).join('')}</div></div>`;
+
+            const chapters = [...new Map(volume.content.map((p, i) => [p.chapter?.trim() || 'بداية الجزء', i])).entries()];
+
+            modal.innerHTML = `
+                <div class="modal-content bg-gray-800 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+                    <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 class="text-xl font-bold text-white">فهرس الأبواب</h2>
+                        <button class="close-modal-btn p-2 rounded-full hover:bg-red-500"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <div class="p-4 border-b border-gray-700">
+                        <input id="toc-search-input" type="text" placeholder="ابحث في الفهرس..." class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    </div>
+                    <div id="toc-chapters-list" class="p-4 space-y-2 overflow-y-auto">
+                    </div>
+                </div>`;
+
+            const chaptersListContainer = modal.querySelector('#toc-chapters-list');
+            const searchInput = modal.querySelector('#toc-search-input');
+
+            const normalizeArabicForSearch = (text) => {
+                if (!text) return '';
+                return text
+                    .replace(/[أإآٱ]/g, 'ا')
+                    .replace(/ى/g, 'ي')
+                    .replace(/ؤ/g, 'و')
+                    .replace(/ئ/g, 'ي')
+                    .replace(/ة/g, 'ه')
+                    .replace(/\u0640/g, '')
+                    .replace(/[\u064B-\u0652]/g, '');
+            };
+
+            const renderChapters = (filteredChapters) => {
+                if(filteredChapters.length === 0){
+                    chaptersListContainer.innerHTML = '<p class="text-center text-gray-400">لا توجد نتائج مطابقة.</p>';
+                    return;
+                }
+                chaptersListContainer.innerHTML = filteredChapters.map(([title, index]) => 
+                    `<button class="w-full text-right bg-gray-700 hover:bg-yellow-600 p-3 rounded-lg" data-page-index="${index}">${title}</button>`
+                ).join('');
+
+                chaptersListContainer.querySelectorAll('[data-page-index]').forEach(btn => {
+                    btn.onclick = () => {
+                        displayPage(parseInt(btn.dataset.pageIndex));
+                        modal.style.display = 'none';
+                    };
+                });
+            };
+
+            renderChapters(chapters);
+
+            searchInput.addEventListener('keyup', () => {
+                const query = normalizeArabicForSearch(searchInput.value.toLowerCase());
+                if (!query) {
+                    renderChapters(chapters);
+                    return;
+                }
+                const filtered = chapters.filter(([title, index]) => 
+                    normalizeArabicForSearch(title.toLowerCase()).includes(query)
+                );
+                renderChapters(filtered);
+            });
+
             modal.style.display = 'flex';
             modal.querySelector('.close-modal-btn').onclick = () => modal.style.display = 'none';
-            modal.querySelectorAll('[data-page-index]').forEach(btn => btn.onclick = () => { displayPage(parseInt(btn.dataset.pageIndex)); modal.style.display = 'none'; });
         }
 
         function updateBookmarkButtonState() {
@@ -1383,5 +1442,6 @@
     </script>
 </body>
 </html>
+
 
 
