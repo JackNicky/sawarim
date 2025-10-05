@@ -15,7 +15,7 @@
     "description": "من أهم مصادر الحديث عند الشيعة.",
     "subtitle": "معتبر تقريباً عند الامامية",
     "volumes": [
-        { "volumeNumber": 1, "volumeTitle": "الجزء الاول" },
+        { "volumeNumber": 1, "volumeTitle": "الجزء الأول" },
         { "volumeNumber": 2, "volumeTitle": "الجزء الثاني" },
         { "volumeNumber": 3, "volumeTitle": "الجزء الثالث" },
         { "volumeNumber": 4, "volumeTitle": "الجزء الرابع" },
@@ -305,7 +305,7 @@
     ]
   },
   {
-    "id": 37,
+    "id": 40,
     "title": "تفسير العياشي",
     "author": "محمد بن مسعود العياشي",
     "cover": "https://placehold.co/300x450/111827/FFFFFF?text=TAFSER AL-AYASHI",
@@ -315,5 +315,13 @@
     "parts": [
       { "file": "book_40.json", "startVolume": 1, "endVolume": 2 }
     ]
+  },
+  {
+    "id": 41,
+    "title": "كامل الزيارات",
+    "author": "جعفر بن قولويه القمي",
+    "cover": "https://placehold.co/300x450/111827/FFFFFF?text=KAMEL AL-ZYARAT",
+    "description": "من أقدم وأوثق المصادر الروائية عند الشيعة في موضوع زيارة النبي (صلى الله عليه وآله) والأئمة من أهل البيت عليهم السلام، وما ورد في فضل زيارتهم وثوابها وآدابها.",
+    "subtitle": "روائي، عبادي، موثوق."
   }
 ]
