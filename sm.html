@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الباحث الذكي - مكتبة صوارم حيدرية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        #search-results-view mark {
+            background-color: #fde047;
+            color: #1f2937;
+            padding: 1px 2px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        .loader {
+            border: 5px solid #374151;
+            border-top: 5px solid #facc15;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        input[type="search"]::-webkit-search-cancel-button {
+            -webkit-appearance: none;
+            height: 1.2em;
+            width: 1.2em;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'><path d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/></svg>");
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <header class="bg-gray-800 shadow-lg p-4 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-white">الباحث الذكي في المكتبة</h1>
+            <a href="./index.html" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-sm md:text-base">
+                العودة للرئيسية
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-6">
+        <div id="loading-view" class="text-center py-10">
+             <div class="loader mx-auto"></div>
+             <p id="loading-status" class="mt-4 text-yellow-400">جاري تهيئة محرك البحث...</p>
+             <p id="loading-details" class="text-gray-500 text-sm mt-2"></p>
+        </div>
+
+        <div id="search-view" class="hidden">
+            <div class="bg-gray-800 p-4 rounded-lg shadow-xl mb-4">
+                 <div class="relative w-full">
+                    <input type="search" id="search-input" placeholder="ابحث في محتوى جميع الكتب..." class="w-full bg-gray-700 border-2 border-gray-600 rounded-lg py-3 px-4 pl-10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-lg">
+                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 space-x-reverse mt-4">
+                    <input id="exact-match-checkbox" type="checkbox" class="w-4 h-4 text-yellow-400 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500 cursor-pointer">
+                    <label for="exact-match-checkbox" class="text-sm font-medium text-gray-300 cursor-pointer">تطابق تام للعبارة</label>
+                </div>
+            </div>
+            
+            <div id="search-meta" class="text-sm text-gray-500 mb-4 h-5 transition-opacity duration-300"></div>
+            <div id="search-results-view"></div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingView = document.getElementById('loading-view');
+            const loadingStatus = document.getElementById('loading-status');
+            const loadingDetails = document.getElementById('loading-details');
+            const searchView = document.getElementById('search-view');
+            const searchInput = document.getElementById('search-input');
+            const searchResultsView = document.getElementById('search-results-view');
+            const searchMeta = document.getElementById('search-meta');
+            const exactMatchCheckbox = document.getElementById('exact-match-checkbox');
+
+            let searchWorker;
+
+            function normalizeText(text) {
+                if (!text) return '';
+                return text.replace(/[إأآا]/g, "ا")
+                           .replace(/ى/g, "ي")
+                           .replace(/[ؤ]/g, "و")
+                           .replace(/[ئ]/g, "ي")
+                           .replace(/[ة]/g, "ه")
+                           .replace(/[\u064B-\u0652]/g, '')
+                           .replace(/[^\u0621-\u064A0-9\s]/g, '');
+            }
+
+            // --- Web Worker ---
+            function initWorker() {
+                const workerCode = `
+                    let searchIndex = null;
+                    let documents = null;
+                    const stopWords = new Set([
+                        "من", "في", "على", "إلى", "عن", "يا", "أيها", "هو", "هي", "به", "له", "انه",
+                        "كان", "يكون", "قال", "قالوا", "عليه", "عليهم", "صلى", "وسلم", "الله", "عليها",
+                        "ذلك", "هذا", "هذه", "الذي", "التي", "الذين", "ما", "أن", "او", "ثم", "بعد",
+                        "كل", "شيء", "له", "لها", "لهم", "فيه", "فيها", "إن", "ان", "عند", "مع", "قد",
+                        "كانوا", "الي", "حتى", "لا", "الا", "إلا", "بما", "كما", "و", "ف", "ب", "ك", "ل"
+                    ]);
+
+
+                    function normalizeText(text) {
+                        if (!text) return '';
+                        return text.replace(/[إأآا]/g, "ا")
+                                   .replace(/ى/g, "ي")
+                                   .replace(/[ؤ]/g, "و")
+                                   .replace(/[ئ]/g, "ي")
+                                   .replace(/[ة]/g, "ه")
+                                   .replace(/[\\u064B-\\u0652]/g, '')
+                                   .replace(/[^\\u0621-\\u064A0-9\\s]/g, '');
+                    }
+
+                    function performSearch(query, exactMatch = false) {
+                        if (!searchIndex || !documents || !query) {
+                            return { results: [], query: query, time: 0 };
+                        }
+                        
+                        const startTime = performance.now();
+                        const normalizedQuery = normalizeText(query.toLowerCase());
+                        let finalResults = [];
+
+                        if (exactMatch) {
+                             finalResults = Object.values(documents).filter(doc => 
+                                doc.text && normalizeText(doc.text).toLowerCase().includes(normalizedQuery)
+                            );
+                        } else {
+                            const queryWords = normalizedQuery.split(' ').filter(w => w.length > 0 && !stopWords.has(w));
+                            if (queryWords.length === 0) return { results: [], query: query, time: 0 };
+
+                            let resultSet = new Set(searchIndex[queryWords[0]] || []);
+                            if (resultSet.size === 0) {
+                                 return { results: [], query: query, time: ((performance.now() - startTime) / 1000).toFixed(4) };
+                            }
+                            
+                            for (let i = 1; i < queryWords.length; i++) {
+                                if (resultSet.size === 0) break;
+                                const wordResults = new Set(searchIndex[queryWords[i]] || []);
+                                resultSet.forEach(docId => {
+                                    if (!wordResults.has(docId)) resultSet.delete(docId);
+                                });
+                            }
+                            finalResults = Array.from(resultSet).map(id => documents[id]).filter(Boolean);
+                        }
+                        
+                        const endTime = performance.now();
+                        const searchTime = ((endTime - startTime) / 1000).toFixed(4);
+
+                        return { results: finalResults, query: query, time: searchTime };
+                    }
+
+                    self.onmessage = function(e) {
+                        const { type, payload } = e.data;
+                        if (type === 'load') {
+                            searchIndex = payload.index;
+                            documents = payload.docs;
+                            self.postMessage({ type: 'ready' });
+                        } else if (type === 'search') {
+                            const searchResults = performSearch(payload.query, payload.exactMatch);
+                            self.postMessage({ type: 'results', payload: searchResults });
+                        }
+                    };
+                `;
+                const blob = new Blob([workerCode], { type: 'application/javascript' });
+                return new Worker(URL.createObjectURL(blob));
+            }
+
+            // --- IndexedDB ---
+            const DB_NAME = 'SawarimSearchDB_v2';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'file_chunks';
+
+            function openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onerror = () => reject("خطأ في فتح قاعدة البيانات.");
+                    request.onsuccess = () => resolve(request.result);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    };
+                });
+            }
+
+            async function saveDataToDB(db, id, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put({ id, data });
+                    request.onerror = () => reject(`فشل حفظ الملف ${id} في قاعدة البيانات.`);
+                    request.onsuccess = () => resolve();
+                });
+            }
+
+            async function loadDataFromDB(db, id) {
+                 return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.get(id);
+                    request.onerror = () => reject(`فشل قراءة الملف ${id} من قاعدة البيانات.`);
+                    request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                });
+            }
+
+            // --- Main Logic ---
+            async function loadIndexAndData() {
+                try {
+                    searchWorker = initWorker();
+                    searchWorker.onmessage = (e) => {
+                        if (e.data.type === 'ready') {
+                            loadingView.classList.add('hidden');
+                            searchView.classList.remove('hidden');
+                            searchInput.focus();
+                        } else if (e.data.type === 'results') {
+                            displayResults(e.data.payload.results, e.data.payload.query, e.data.payload.time);
+                        }
+                    };
+                    
+                    const db = await openDB();
+                    loadingStatus.textContent = 'التحقق من الفهرس المحلي...';
+                    
+                    let indexData = await loadDataFromDB(db, 'index_full');
+                    let docsData = await loadDataFromDB(db, 'docs_full');
+
+                    if (indexData && docsData) {
+                        loadingStatus.textContent = 'تم تحميل الفهرس من قاعدة البيانات المحلية بنجاح.';
+                        searchWorker.postMessage({ type: 'load', payload: { index: indexData, docs: docsData } });
+                    } else {
+                        loadingStatus.textContent = 'جاري تحميل بيانات البحث لأول مرة...';
+                        loadingDetails.textContent = 'سيتم تقسيم التحميل إلى عدة أجزاء صغيرة. قد تستغرق هذه العملية بضع دقائق...';
+                        
+                        const manifestRes = await fetch('./data/index_parts/manifest.json');
+                        if (!manifestRes.ok) throw new Error('فشل تحميل ملف manifest.json. تأكد من تشغيل سكربت البناء.');
+                        const manifest = await manifestRes.json();
+                        
+                        const indexFiles = manifest.index;
+                        const docFiles = manifest.documents;
+                        
+                        const totalFiles = indexFiles.length + docFiles.length;
+                        let filesLoaded = 0;
+
+                        const fetchAndCombine = async (files) => {
+                            let combinedData = {};
+                            for (const file of files) {
+                                const res = await fetch(`./data/index_parts/${file}`);
+                                if (!res.ok) throw new Error(`فشل تحميل الجزء: ${file}`);
+                                const chunkData = await res.json();
+                                Object.assign(combinedData, chunkData);
+                                filesLoaded++;
+                                loadingStatus.textContent = `جاري تحميل الأجزاء... (${filesLoaded} / ${totalFiles})`;
+                            }
+                            return combinedData;
+                        };
+
+                        indexData = await fetchAndCombine(indexFiles);
+                        docsData = await fetchAndCombine(docFiles);
+
+                        loadingStatus.textContent = 'جاري تخزين الفهرس محليًا...';
+                        await Promise.all([
+                            saveDataToDB(db, 'index_full', indexData),
+                            saveDataToDB(db, 'docs_full', docsData)
+                        ]);
+                        
+                        searchWorker.postMessage({ type: 'load', payload: { index: indexData, docs: docsData } });
+                    }
+                } catch (error) {
+                    loadingStatus.innerHTML = `خطأ فادح: ${error.message}<br/>قد تكون مساحة التخزين في متصفحك ممتلئة. حاول تفريغ بعض المساحة أو تحديث المتصفح.`;
+                    loadingStatus.classList.remove('text-yellow-400');
+                    loadingStatus.classList.add('text-red-500');
+                    console.error(error);
+                }
+            }
+            
+            function createHighlightRegex(query) {
+                const words = query.trim().split(/\s+/).map(word => {
+                    return word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                               .replace(/[إأآا]/g, '[إأآا]')
+                               .replace(/ى/g, '[ىي]')
+                               .replace(/[ةه]/g, '[ةه]');
+                });
+                return new RegExp(`(${words.join('|')})`, 'gi');
+            }
+            
+            function createSnippet(text, query, contextLength = 80) {
+                const normalizedText = normalizeText(text.toLowerCase());
+                const normalizedQuery = normalizeText(query.toLowerCase());
+                
+                let index = normalizedText.indexOf(normalizedQuery);
+                if (index === -1) {
+                    index = normalizedText.indexOf(normalizedQuery.split(' ')[0]);
+                }
+                if (index === -1) {
+                    return text.substring(0, contextLength * 2) + (text.length > contextLength * 2 ? '...' : '');
+                }
+
+                const start = Math.max(0, index - contextLength);
+                const end = Math.min(text.length, index + query.length + contextLength);
+                let snippet = text.substring(start, end);
+
+                if (start > 0) snippet = "..." + snippet;
+                if (end < text.length) snippet = snippet + "...";
+
+                const highlightRegex = createHighlightRegex(query);
+                return snippet.replace(highlightRegex, `<mark>$&</mark>`);
+            }
+
+            function displayResults(results, query, time) {
+                searchResultsView.innerHTML = '';
+                searchMeta.textContent = `تم العثور على ${results.length} نتيجة في ${time} ثانية.`;
+
+                if (results.length === 0 && query) {
+                    searchResultsView.innerHTML = '<p class="text-center text-gray-400 mt-8">لا توجد نتائج مطابقة لبحثك.</p>';
+                    return;
+                }
+
+                const groupedByBook = results.reduce((acc, res) => {
+                    if (res) { // Add a check to ensure 'res' is not undefined
+                      (acc[res.book_title] = acc[res.book_title] || []).push(res);
+                    }
+                    return acc;
+                }, {});
+
+                const fragment = document.createDocumentFragment();
+
+                Object.keys(groupedByBook).sort().forEach(bookTitle => {
+                    const bookGroup = document.createElement('div');
+                    bookGroup.className = 'bg-gray-800 rounded-lg overflow-hidden my-4';
+                    
+                    const header = document.createElement('h2');
+                    header.className = 'text-lg font-bold text-yellow-400 p-3 bg-gray-700/50 cursor-pointer';
+                    header.textContent = `${bookTitle} (${groupedByBook[bookTitle].length} نتيجة)`;
+                    bookGroup.appendChild(header);
+
+                    const list = document.createElement('div');
+                    list.className = 'divide-y divide-gray-700';
+                    
+                    groupedByBook[bookTitle].slice(0, 50).forEach(res => {
+                        const snippetHTML = createSnippet(res.text, query);
+                        const resultEl = document.createElement('a');
+                        resultEl.href = `index.html#/book/${res.book_id}/volume/${res.vol_num}/page/${res.page}?highlight=${encodeURIComponent(query)}`;
+                        resultEl.target = "_blank";
+                        resultEl.className = 'block p-3 hover:bg-gray-700/50 transition-colors';
+                        resultEl.innerHTML = `
+                            <p class="text-sm text-gray-400 mb-2">${res.vol_title} - صفحة ${res.page}</p>
+                            <p class="text-gray-300 leading-relaxed">${snippetHTML}</p>
+                        `;
+                        list.appendChild(resultEl);
+                    });
+
+                    bookGroup.appendChild(list);
+                    fragment.appendChild(bookGroup);
+                });
+
+                searchResultsView.appendChild(fragment);
+            }
+            
+            let debounceTimer;
+            const triggerSearch = () => {
+                 clearTimeout(debounceTimer);
+                 const query = searchInput.value.trim();
+                 if (query.length < 2 && query.length !== 0) {
+                     searchMeta.textContent = 'الرجاء إدخال حرفين على الأقل للبحث.';
+                     searchResultsView.innerHTML = '';
+                     return;
+                 }
+                 debounceTimer = setTimeout(() => {
+                    if (query) {
+                         searchMeta.textContent = 'جاري البحث...';
+                         searchWorker.postMessage({ type: 'search', payload: { query, exactMatch: exactMatchCheckbox.checked } });
+                    } else {
+                         searchResultsView.innerHTML = '';
+                         searchMeta.textContent = '';
+                    }
+                }, 250);
+            };
+
+            searchInput.addEventListener('input', triggerSearch);
+            exactMatchCheckbox.addEventListener('change', triggerSearch);
+            
+            loadIndexAndData();
+        });
+    </script>
+</body>
+</html>
+
