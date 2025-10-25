@@ -3,292 +3,440 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بحث متقدم - مكتبة صوارم حيدرية</title>
+    <title>بحث ذكي وفوري - مكتبة إلكترونية</title>
+    
+    <!-- 1. تحميل Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. تحميل مكتبة Algolia للبحث الفوري (InstantSearch.js) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/instantsearch.css@8/themes/satellite-min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/instantsearch.js@4"></script>
+
+    <!-- 3. تحميل الخطوط -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 4. التنسيقات المخصصة -->
     <style>
-        body { font-family: 'Tajawal', sans-serif; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
-        .search-results-view mark {
-            background-color: #facc15;
-            color: #1f2937;
-            padding: 2px 1px;
-            border-radius: 3px;
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #111827; /* Darker background - مطابق لـ gray-900 */
+            color: #d1d5db; /* gray-300 */
+            overflow-x: hidden; /* منع أي تجاوز أفقي */
         }
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #ca8a04;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
+
+        /* --- تنسيقات الحركة (Animation) --- */
+
+        /* الوضع الأولي (البحث في المنتصف) */
+        #main-content.center-mode {
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* توسيط عمودي */
+            align-items: center; /* توسيط أفقي */
+            min-height: calc(100vh - 40px); /* ارتفاع كامل الشاشة تقريباً */
+            padding-top: 0;
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* حاوية كتلة البحث (التي تتحرك) */
+        #search-block {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        /* حاوية اللوجو والبحث (الداخلية) */
+        #logo-search-container {
+            display: flex;
+            align-items: center;
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        
+        /* اللوجو */
+        #logo-img {
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+            user-select: none; /* A- لمنع التحديد - A- */
+        }
+
+        /* زر العودة */
+        #back-button {
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+            white-space: nowrap; /* منع انكسار النص */
+        }
+        
+        /* حاوية النتائج */
+        #results-area {
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+
+        /* تطبيق تنسيقات وضع المنتصف */
+        .center-mode #search-block {
+            justify-content: center;
+            flex-direction: column;
+        }
+        .center-mode #logo-search-container {
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        .center-mode #logo-img {
+            width: 12rem; /* 192px */
+            margin-bottom: 1.5rem; /* 24px */
+        }
+        .center-mode #searchbox-wrapper {
+            width: 100%;
+            max-width: 42rem; /* 672px */
+        }
+        .center-mode #back-button {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            margin-right: 0;
+        }
+        .center-mode #results-area {
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        /* تطبيق تنسيقات وضع البحث (الانتقال للأعلى) */
+        .search-mode #search-block {
+            justify-content: space-between;
+            flex-direction: row;
+            padding: 1rem 0;
+            border-bottom: 1px solid #374151; /* gray-700 */
+        }
+        .search-mode #logo-search-container {
+            flex-direction: row;
+            align-items: center;
+            flex-grow: 1; /* جعلها تأخذ المساحة المتاحة */
+            gap: 1rem; /* 16px */
+        }
+        .search-mode #logo-img {
+            width: 3.5rem; /* 56px */
+            margin-bottom: 0;
+        }
+        .search-mode #searchbox-wrapper {
+            flex-grow: 1; /* جعل مربع البحث يمتد */
+            max-width: none;
+        }
+        .search-mode #back-button {
+            opacity: 100;
+            width: auto;
+            margin-right: 1.5rem; /* 24px */
+        }
+        .search-mode #results-area {
+            opacity: 100;
+            max-height: 10000px; /* قيمة كبيرة */
+            padding-top: 2rem; /* 32px */
+        }
+
+
+        /* --- تنسيقات واجهة Algolia (مطابقة لألوان المكتبة) --- */
+
+        .ais-SearchBox-input {
+            background-color: #1f2937; /* gray-800 */
+            color: #f3f4f6; /* gray-100 */
+            border: 1px solid #374151; /* gray-700 */
+            border-radius: 0.75rem; /* 12px */
+            font-size: 1.125rem; /* 18px */
+            padding: 0.75rem 1.25rem 0.75rem 3.5rem; /* 12px 20px 12px 56px */
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .ais-SearchBox-input:focus {
+            border-color: #f59e0b; /* amber-500 */
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.6);
+            outline: none;
+        }
+        .ais-SearchBox-submit, .ais-SearchBox-reset {
+            color: #9ca3af; /* gray-400 */
+            left: 1rem; /* 16px */
+            right: auto;
+            width: 2rem; /* 32px */
+            height: 2rem; /* 32px */
+        }
+        .ais-SearchBox-reset {
+            left: auto;
+            right: 1rem; /* 16px */
+        }
+
+        .ais-InfiniteHits-item {
+            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #374151; /* gray-700 */
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease-in-out;
+        }
+        .ais-InfiniteHits-item:hover {
+            background-color: #2b3a4a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .ais-Highlight-highlighted {
+            background-color: #facc15; /* yellow-400 */
+            color: #111827; /* gray-900 */
+            font-style: normal;
+            font-weight: bold;
+        }
+        .ais-Snippet-highlighted {
+            background-color: #fde68a; /* yellow-200 */
+            color: #111827;
+            font-style: normal;
+        }
+        .ais-Stats-text {
+            color: #9ca3af; /* gray-400 */
+            font-size: 0.95rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+        .result-link {
+            display: block;
+            padding: 1.25rem;
+        }
+        .result-title {
+            color: #facc15; /* yellow-400 */
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .result-snippet {
+            color: #d1d5db; /* gray-300 */
+            font-size: 1rem;
+            line-height: 1.7;
+            margin-top: 0.75rem;
+        }
+        .result-location {
+            color: #9ca3af; /* gray-400 */
+            font-size: 0.9rem;
+        }
+        .ais-InfiniteHits-loadMore--disabled {
+            display: none;
+        }
+        .ais-InfiniteHits-list {
+            margin-top: 1.5rem;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
+<body class="text-gray-200">
 
-    <header class="bg-gray-800 shadow-lg p-4 sticky top-0 z-40">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-white">بحث متقدم في المحتوى</h1>
-            <a href="./index.html" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+    <!-- 
+      الحاوية الرئيسية.
+      تتحكم بالتبديل بين وضع "المنتصف" و "البحث"
+    -->
+    <main id="main-content" class="container mx-auto p-4 md:p-6 center-mode">
+
+        <!-- 
+          هذه الكتلة هي التي تتحرك من المنتصف إلى الأعلى.
+          تحتوي على اللوجو، مربع البحث، وزر العودة.
+        -->
+        <div id="search-block" class="w-full">
+            
+            <!-- حاوية اللوجو ومربع البحث (لتغيير اتجاهها من عمودي إلى أفقي) -->
+            <div id="logo-search-container">
+                <!-- اللوجو (يصغر حجمه) -->
+                <img id="logo-img" src="logo.png" alt="مكتبة صوارم حيدرية" 
+                     onerror="this.src='https://placehold.co/192x64/111827/F59E0B?text=مكتبة+صوارم+حيدرية&font=tajawal'"
+                     class="h-auto"
+                     draggable="false" 
+                     oncontextmenu="return false;">
+                
+                <!-- حاوية مربع البحث (لتأخذ المساحة المتبقية) -->
+                <div id="searchbox-wrapper" class="w-full">
+                    <div id="searchbox"></div>
+                </div>
+            </div>
+
+            <!-- زر العودة للمكتبة (يظهر في وضع البحث) -->
+            <a href="./index.html" id="back-button" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-4 rounded-lg transition duration-300 text-sm md:text-base">
                 العودة للمكتبة
             </a>
         </div>
-    </header>
 
-    <main class="container mx-auto p-6">
-        <div id="initial-loading-view" class="text-center py-10">
-             <div class="loader mx-auto"></div>
-             <p id="indexing-status" class="mt-4 text-yellow-400">جاري تجهيز فهرس البحث، يرجى الانتظار...</p>
-             <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                <div id="indexing-progress" class="bg-yellow-500 h-2.5 rounded-full" style="width: 0%"></div>
-            </div>
+        <!-- 
+          حاوية النتائج.
+          تكون مخفية في البداية وتظهر عند البحث.
+        -->
+        <div id="results-area" class="w-full max-w-7xl mx-auto" style="display: none;">
+            <div id="stats" class="mb-4 text-center"></div>
+            <div id="infinite-hits" class="grid grid-cols-1 gap-4"></div>
+            <div id="load-more" class="mt-6"></div>
         </div>
 
-        <div id="search-view" class="hidden">
-            <div class="flex flex-col md:flex-row gap-4 mb-4 items-end">
-                <!-- Search Input -->
-                <div class="relative flex-grow w-full">
-                    <label for="search-input" class="block mb-2 text-sm font-medium text-gray-400">نص البحث:</label>
-                    <textarea id="search-input" placeholder="ابحث في محتوى جميع الكتب..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="1" style="resize: none;"></textarea>
-                </div>
-                <!-- Book Selector -->
-                <div class="w-full md:w-1/3">
-                    <label for="book-select" class="block mb-2 text-sm font-medium text-gray-400">البحث في:</label>
-                    <select id="book-select" class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                        <option value="all">جميع الكتب</option>
-                        <!-- Options populated by JS -->
-                    </select>
-                </div>
-            </div>
-             <div class="flex items-center gap-4 mb-6">
-                <button id="search-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300">بحث</button>
-                <button id="reindex-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300">تحديث الفهرسة</button>
-            </div>
-            <div id="search-results-view"></div>
-        </div>
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Redirect mobile users to the mobile-specific search page.
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                window.location.href = 'search-mobile.html';
-                return; // Stop execution for mobile devices
-            }
-            
-            const initialLoadingView = document.getElementById('initial-loading-view');
-            const indexingStatus = document.getElementById('indexing-status');
-            const indexingProgress = document.getElementById('indexing-progress');
-            const searchView = document.getElementById('search-view');
-            const searchInput = document.getElementById('search-input');
-            const searchBtn = document.getElementById('search-btn');
-            const reindexBtn = document.getElementById('reindex-btn');
-            const searchResultsView = document.getElementById('search-results-view');
-            const bookSelect = document.getElementById('book-select');
-            
-            searchInput.addEventListener('input', () => {
-                searchInput.style.height = 'auto';
-                searchInput.style.height = (searchInput.scrollHeight) + 'px';
-            });
+    // ---!!! املأ هذه البيانات من حسابك في Algolia ---
+    // (استخدم مفتاح "البحث فقط" الآمن، وليس مفتاح الإدارة)
+    const APP_ID = 'WNTCD8VCVN'; // Application ID
+    const SEARCH_API_KEY = '8408f8db810272af552293ce39637e49'; // Search-Only API Key (الآمن)
+    const INDEX_NAME = 'books_index'; // اسم الفهرس
+    // ---!!! ------------------------------------------
 
-            let searchableContent = [];
-            let isIndexBuilt = false;
+    // جلب العناصر الأساسية للتحكم بالحركة
+    const mainContent = document.getElementById('main-content');
+    const resultsArea = document.getElementById('results-area');
 
-            function normalizeText(text) {
-                if (!text) return '';
-                text = text.replace(/[\u064B-\u0652]/g, '');
-                text = text.replace(/[أإآ]/g, 'ا');
-                text = text.replace(/ى/g, 'ي');
-                text = text.replace(/ؤ/g, 'و');
-                text = text.replace(/ئ/g, 'ي');
-                text = text.replace(/ة/g, 'ه');
-                return text;
-            }
-            
-            const fetchMasterList = () => fetch('./data/books.json')
-                .then(res => res.ok ? res.json() : Promise.reject(`Failed to load books.json`))
-                .catch(err => { console.error(err); return []; });
-            
-            const fetchBookPart = (partFile) => fetch(`./data/${partFile}`)
-                .then(res => res.ok ? res.json() : Promise.reject(`Failed to load ${partFile}`))
-                .catch(err => { console.error(err); return null; });
+    // تهيئة Algolia
+    const searchClient = algoliasearch(APP_ID, SEARCH_API_KEY);
 
-            async function populateBooksDropdown() {
-                const allBooks = await fetchMasterList();
-                allBooks.forEach(book => {
-                    const option = document.createElement('option');
-                    option.value = book.id;
-                    option.textContent = book.title;
-                    bookSelect.appendChild(option);
-                });
-            }
+    const search = instantsearch({
+      indexName: INDEX_NAME,
+      searchClient,
+      searchParameters: {
+        distinct: true, // تفعيل ميزة التمييز (Distinct) التي أعددناها
+      },
+    });
+
+    // ودجت شريط البحث
+    const searchBoxWidget = instantsearch.widgets.searchBox({
+        container: '#searchbox',
+        placeholder: 'ابحث في محتوى جميع الكتب...',
+        showSubmit: false,
+        showReset: true,
+        cssClasses: {
+            root: 'relative',
+            form: 'overflow-hidden rounded-xl', // إصلاح الزوايا
+            input: 'w-full ais-SearchBox-input',
+            submit: 'ais-SearchBox-submit',
+            reset: 'ais-SearchBox-reset',
+        },
+    });
+    
+    // ودجت إحصائيات النتائج
+    const statsWidget = instantsearch.widgets.stats({
+        container: '#stats',
+        templates: {
+          text(data, { html }) {
+            let count = data.nbHits;
+            if (count === 0) return ''; // لا تعرض الإحصائيات إذا لم توجد نتائج
+            return `تم العثور على ${count} نتيجة في ${data.processingTimeMS}ms`;
+          },
+        },
+    });
+
+    // ودجت عرض النتائج اللانهائي (مع زر "تحميل المزيد" بنفس لون المكتبة)
+    const infiniteHitsWidget = instantsearch.widgets.infiniteHits({
+        container: '#infinite-hits',
+        loadMoreButton: '#load-more',
+        cssClasses: {
+            root: 'ais-InfiniteHits',
+            list: 'ais-InfiniteHits-list grid grid-cols-1 gap-4',
+            item: 'ais-InfiniteHits-item',
+            loadMore: 'w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md', 
+            loadMoreRoot: 'flex justify-center mt-6',
+            disabledLoadMore: 'ais-InfiniteHits-loadMore--disabled',
+        },
+        templates: {
+          empty(results, { html }) {
+            return `
+                <div class="text-center text-gray-400 text-lg p-4 bg-gray-800 rounded-lg shadow-inner">
+                    <p>لم يتم العثور على نتائج للبحث عن: <strong>${results.query}</strong></p>
+                    <p class="text-sm mt-2">يرجى التحقق من الكلمات المفتاحية أو تجربة بحث أعم.</p>
+                </div>
+            `;
+          },
+          showMoreText: 'تحميل المزيد من النتائج',
+          item(hit, { html, components }) {
+            // جلب نص البحث الحالي من حالة المساعد لضمان عدم كونه 'undefined'
+            // const currentQuery = search.helper ? search.helper.state.query : '';
             
-            async function buildSearchIndex() {
-                initialLoadingView.classList.remove('hidden');
-                searchView.classList.add('hidden');
-                indexingProgress.style.width = '0%';
-                
-                let allBooks = await fetchMasterList();
-                if (allBooks.length === 0) {
-                    indexingStatus.textContent = "فشل تحميل قائمة الكتب.";
-                    return;
+            // --- تعديل: جلب النص المظلل الفعلي من النتيجة ---
+            let highlightQuery = '';
+            if (hit._snippetResult && hit._snippetResult.text && hit._snippetResult.text.value) {
+                const snippetHTML = hit._snippetResult.text.value;
+                // البحث عن أول نص داخل وسم <mark>
+                const match = snippetHTML.match(/<mark>(.*?)<\/mark>/);
+                if (match && match[1]) {
+                    // استخراج النص بدون وسوم HTML الداخلية (لو وجدت)
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = match[1];
+                    highlightQuery = tempDiv.textContent || tempDiv.innerText || '';
                 }
-
-                let freshSearchableContent = [];
-                let totalFilesToFetch = 0;
-                allBooks.forEach(book => {
-                    totalFilesToFetch += (book.parts ? book.parts.length : 1);
-                });
-                let filesProcessed = 0;
-                indexingStatus.textContent = `جاري فهرسة الكتب... (0 / ${totalFilesToFetch})`;
-
-                for (const book of allBooks) {
-                    if (book.parts && book.parts.length > 0) {
-                        for (const part of book.parts) {
-                            const partData = await fetchBookPart(part.file);
-                            if (partData && partData.volumes) {
-                                partData.volumes.forEach((volume, volIdx) => {
-                                    volume.content?.forEach(page => {
-                                        freshSearchableContent.push({ bookId: book.id, bookTitle: book.title, volumeTitle: volume.volumeTitle, pageNumber: page.pageNumber, chapter: page.chapter, text: page.text, normalizedText: normalizeText(page.text), absoluteVolumeNumber: volume.volumeNumber });
-                                    });
-                                });
-                            }
-                            filesProcessed++;
-                            indexingProgress.style.width = `${(filesProcessed / totalFilesToFetch) * 100}%`;
-                            indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
-                        }
-                    } else {
-                        const bookDetails = await fetchBookPart(`book_${book.id}.json`);
-                        if (bookDetails && bookDetails.volumes) {
-                            bookDetails.volumes.forEach((volume, volIdx) => {
-                                volume.content?.forEach(page => {
-                                    freshSearchableContent.push({ bookId: book.id, bookTitle: book.title, volumeTitle: volume.volumeTitle, pageNumber: page.pageNumber, chapter: page.chapter, text: page.text, normalizedText: normalizeText(page.text), absoluteVolumeNumber: volume.volumeNumber });
-                                });
-                            });
-                        }
-                        filesProcessed++;
-                        indexingProgress.style.width = `${(filesProcessed / totalFilesToFetch) * 100}%`;
-                        indexingStatus.textContent = `جاري فهرسة الكتب... (${filesProcessed} / ${totalFilesToFetch})`;
-                    }
-                }
-                
-                searchableContent = freshSearchableContent;
-                isIndexBuilt = true;
-                initialLoadingView.classList.add('hidden');
-                searchView.classList.remove('hidden');
-                console.log(`Search index built with ${searchableContent.length} pages.`);
             }
 
-            function handleAdvancedSearch() {
-                const query = searchInput.value.trim();
-                const selectedBookId = bookSelect.value;
-
-                if (!query) {
-                    searchResultsView.innerHTML = '<p class="text-center text-gray-400">الرجاء إدخال نص للبحث.</p>';
-                    return;
-                }
-                 if (!isIndexBuilt) {
-                    alert("الفهرسة لا تزال قيد التقدم. الرجاء الانتظار.");
-                    return;
-                }
-
-                const normalizedQuery = normalizeText(query);
-                const regexPattern = normalizedQuery
-                    .replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
-                    .replace(/\s+/g, '\\s+');
-                const results = [];
-                const regex = new RegExp(regexPattern, 'gi');
-                
-                const contentToSearch = selectedBookId === 'all' 
-                    ? searchableContent 
-                    : searchableContent.filter(item => item.bookId == selectedBookId);
-
-                contentToSearch.forEach(item => {
-                    if (item.normalizedText && item.normalizedText.match(regex)) {
-                        const snippet = createSnippet(item.text, query);
-                        results.push({ ...item, snippet });
-                    }
-                });
-                
-                displayAdvancedSearchResults(results, query);
+            // إذا لم يتم العثور على نص مظلل في المقتطف (ربما كان في العنوان)، نستخدم نص البحث الأصلي كبديل
+            if (highlightQuery === '' && search.helper) {
+                highlightQuery = search.helper.state.query;
             }
+            // --- نهاية التعديل ---
+
+            // إنشاء رابط النتيجة
+            const url = `index.html#/book/${hit.bookId}/volume/${hit.volumeNumber}/page/${hit.pageNumber}?highlight=${encodeURIComponent(highlightQuery)}`;
             
-            function createFlexibleRegexForHighlighting(query) {
-                let flexibleQuery = query
-                    .replace(/[أإآا]/g, '[أإآا]')
-                    .replace(/[ىيئ]/g, '[ىيئ]')
-                    .replace(/[ؤو]/g, '[ؤو]')
-                    .replace(/[ةه]/g, '[ةه]');
-                flexibleQuery = flexibleQuery.split('').join('[\\u064B-\\u0652]*');
-                flexibleQuery = flexibleQuery.replace(/\s+/g, '\\s+');
-                return new RegExp(flexibleQuery, 'gi');
-            }
-            
-            function createSnippet(text, query, contextLength = 60) {
-                const regex = createFlexibleRegexForHighlighting(query);
-                const matchResult = regex.exec(text);
-                if (!matchResult) return text.substring(0, contextLength * 2) + (text.length > contextLength * 2 ? '...' : '');
+            return html`
+              <a href="${url}" target="_blank" class="result-link">
+                <div class="result-title">
+                  ${components.Highlight({ attribute: 'bookTitle', hit })}
+                </div>
+                <div class="result-location">
+                  الجزء ${hit.volumeNumber} - صفحة ${hit.pageNumber}
+                </div>
+                <div class="result-snippet">
+                  ${components.Snippet({ attribute: 'text', hit })}
+                </div>
+              </a>
+            `;
+          },
+        },
+    });
 
-                const index = matchResult.index;
-                const matchText = matchResult[0];
-                const start = Math.max(0, index - contextLength);
-                const end = Math.min(text.length, index + matchText.length + contextLength);
-                let snippet = text.substring(start, end);
+    // إضافة الودجت
+    search.addWidgets([
+      searchBoxWidget,
+      statsWidget,
+      infiniteHitsWidget
+    ]);
 
-                if (start > 0) snippet = "..." + snippet;
-                if (end < text.length) snippet = snippet + "...";
-                
-                const highlightRegex = createFlexibleRegexForHighlighting(query);
-                return snippet.replace(highlightRegex, `<mark>$&</mark>`);
-            }
+    // وظيفة لتغيير وضع العرض
+    function setDisplayMode(mode) {
+        if (mode === 'center') {
+            mainContent.classList.remove('search-mode');
+            mainContent.classList.add('center-mode');
+            resultsArea.style.display = 'none';
+        } else { // mode === 'search'
+            mainContent.classList.remove('center-mode');
+            mainContent.classList.add('search-mode');
+            resultsArea.style.display = 'block';
+        }
+    }
 
-            function displayAdvancedSearchResults(results, query) {
-                searchResultsView.innerHTML = '';
-                const header = document.createElement('div');
-                header.className = 'flex justify-between items-center mb-4';
-                header.innerHTML = `<h2 class="text-xl font-bold text-white">نتائج البحث عن: "${query}" (${results.length} نتيجة)</h2>`;
-                searchResultsView.appendChild(header);
+    // تتبع حالة البحث
+    search.on('render', () => {
+        // تأكد من أن search.helper.state متاح
+        if (search.helper && search.helper.state.query && search.helper.state.query.trim().length > 0) {
+            // إذا كان هناك نص في البحث، انتقل لوضع البحث
+            setDisplayMode('search');
+        } else {
+            // إذا كان البحث فارغاً، عد لوضع المنتصف
+            setDisplayMode('center');
+        }
+    });
 
-                if (results.length === 0) {
-                    searchResultsView.innerHTML += '<p class="text-gray-400 text-center">لم يتم العثور على نتائج.</p>';
-                    return;
-                }
+    // بدء البحث (بشكل أولي، بدون استعراض، للتحكم في العرض)
+    search.start();
 
-                const resultsContainer = document.createElement('div');
-                resultsContainer.className = 'space-y-4';
-                results.forEach(res => {
-                    const resultEl = document.createElement('a');
-                    resultEl.href = `index.html#/book/${res.bookId}/volume/${res.absoluteVolumeNumber}/page/${res.pageNumber}?highlight=${encodeURIComponent(query)}`;
-                    resultEl.target = "_blank"; // Open in new tab
-                    resultEl.className = 'block bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-colors';
-                    resultEl.innerHTML = `
-                        <h3 class="font-bold text-yellow-400">${res.bookTitle}</h3>
-                        <p class="text-sm text-gray-400 mb-2">${res.volumeTitle} - صفحة ${res.pageNumber}</p>
-                        <p class="text-gray-300">${res.snippet}</p>
-                    `;
-                    resultsContainer.appendChild(resultEl);
-                });
-                searchResultsView.appendChild(resultsContainer);
-            }
+    // لمنع الظهور المؤقت للنتائج قبل تطبيق المنطق
+    document.addEventListener('DOMContentLoaded', () => {
+        // إذا كان هناك استعلام في الرابط (شارك أحدهم رابط بحث مثلاً)
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryFromUrl = urlParams.get('query');
+        if (queryFromUrl) {
+            search.helper.setQuery(queryFromUrl).search();
+        } else {
+            // إذا لم يكن هناك بحث في الرابط، ابدأ في وضع المنتصف
+            setDisplayMode('center');
+        }
+    });
 
-            populateBooksDropdown();
-            buildSearchIndex();
-            searchBtn.addEventListener('click', handleAdvancedSearch);
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleAdvancedSearch();
-                }
-            });
-
-        });
     </script>
 </body>
 </html>
+
 
