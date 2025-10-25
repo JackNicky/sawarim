@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بحث ذكي وفوري - مكتبة إلكترونية</title>
+    <title>بحث في المحتوى - مكتبة صوارم حيدرية</title>
     
     <!-- 1. تحميل Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. تحميل مكتبة Algolia للبحث الفوري (InstantSearch.js) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/instantsearch.css@8/themes/satellite-min.css" />
+    <!-- تم حذف ملف satellite-min.css لإصلاح تعارض الألوان -->
     <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/instantsearch.js@4"></script>
 
@@ -29,6 +29,11 @@
 
         /* --- تنسيقات الحركة (Animation) --- */
 
+        /* الحاوية الرئيسية (لتبديل العرض) */
+        #main-content {
+            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
         /* الوضع الأولي (البحث في المنتصف) */
         #main-content.center-mode {
             display: flex;
@@ -37,9 +42,20 @@
             align-items: center; /* توسيط أفقي */
             min-height: calc(100vh - 40px); /* ارتفاع كامل الشاشة تقريباً */
             padding-top: 0;
-            transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+            width: 100%;
+            max-width: 42rem; /* عرض ضيق في المنتصف */
+            margin: 0 auto;
         }
         
+        /* وضع البحث (الانتقال للأعلى) */
+        #main-content.search-mode {
+            justify-content: flex-start;
+            padding-top: 0;
+            width: 100%;
+            max-width: 64rem; /* عرض أوسع للنتائج */
+            margin: 0 auto;
+        }
+
         /* حاوية كتلة البحث (التي تتحرك) */
         #search-block {
             display: flex;
@@ -58,7 +74,8 @@
         /* اللوجو */
         #logo-img {
             transition: all 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
-            user-select: none; /* A- لمنع التحديد - A- */
+            user-select: none;
+            -webkit-user-drag: none; /* لمنع السحب */
         }
 
         /* زر العودة */
@@ -89,15 +106,16 @@
         }
         .center-mode #searchbox-wrapper {
             width: 100%;
-            max-width: 42rem; /* 672px */
         }
         .center-mode #back-button {
             opacity: 0;
             width: 0;
             overflow: hidden;
             margin-right: 0;
+            padding: 0;
         }
         .center-mode #results-area {
+            display: none;
             opacity: 0;
             max-height: 0;
             overflow: hidden;
@@ -109,6 +127,7 @@
             flex-direction: row;
             padding: 1rem 0;
             border-bottom: 1px solid #374151; /* gray-700 */
+            /* align-items: center; <-- تم حذف هذا السطر لإصلاح المحاذاة العمودية */
         }
         .search-mode #logo-search-container {
             flex-direction: row;
@@ -122,19 +141,18 @@
         }
         .search-mode #searchbox-wrapper {
             flex-grow: 1; /* جعل مربع البحث يمتد */
-            max-width: none;
         }
         .search-mode #back-button {
             opacity: 100;
             width: auto;
-            margin-right: 1.5rem; /* 24px */
+            margin-right: 1.5rem; /* 24px */ /* <-- تم التعديل هنا (كان margin-left) */
         }
         .search-mode #results-area {
+            display: block;
             opacity: 100;
             max-height: 10000px; /* قيمة كبيرة */
             padding-top: 2rem; /* 32px */
         }
-
 
         /* --- تنسيقات واجهة Algolia (مطابقة لألوان المكتبة) --- */
 
@@ -192,9 +210,10 @@
         .ais-Stats-text {
             color: #9ca3af; /* gray-400 */
             font-size: 0.95rem;
-            text-align: center;
-            margin-bottom: 1.5rem;
+            text-align: right; /* تغيير من center إلى right */
+            margin-bottom: 0.5rem; /* تقليل الهامش السفلي */
             display: block;
+            /* إزالة الهامش اليميني الإضافي لضمان المحاذاة التامة */
         }
         .result-link {
             display: block;
@@ -216,12 +235,28 @@
             color: #9ca3af; /* gray-400 */
             font-size: 0.9rem;
         }
+        .ais-InfiniteHits-loadMore {
+             w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md;
+        }
         .ais-InfiniteHits-loadMore--disabled {
             display: none;
         }
         .ais-InfiniteHits-list {
             margin-top: 1.5rem;
         }
+        
+        /* إخفاء عناصر النتائج والإحصائيات مبدئياً */
+        #stats, #infinite-hits, #load-more, #search-options {
+            display: none;
+        }
+        /* إظهارها عند وضع البحث */
+        .search-mode #stats, 
+        .search-mode #infinite-hits, 
+        .search-mode #load-more,
+        .search-mode #search-options { /* تمت إضافة search-options هنا */
+            display: block;
+        }
+
     </style>
 </head>
 <body class="text-gray-200">
@@ -239,7 +274,7 @@
         <div id="search-block" class="w-full">
             
             <!-- حاوية اللوجو ومربع البحث (لتغيير اتجاهها من عمودي إلى أفقي) -->
-            <div id="logo-search-container">
+            <div id="logo-search-container" class="w-full">
                 <!-- اللوجو (يصغر حجمه) -->
                 <img id="logo-img" src="logo.png" alt="مكتبة صوارم حيدرية" 
                      onerror="this.src='https://placehold.co/192x64/111827/F59E0B?text=مكتبة+صوارم+حيدرية&font=tajawal'"
@@ -263,8 +298,16 @@
           حاوية النتائج.
           تكون مخفية في البداية وتظهر عند البحث.
         -->
-        <div id="results-area" class="w-full max-w-7xl mx-auto" style="display: none;">
-            <div id="stats" class="mb-4 text-center"></div>
+        <div id="results-area" class="w-full mx-auto" style="display: none;">
+            <div id="stats" class="mb-2 w-full"></div> <!-- إزالة text-center وتقليل الهامش + إضافة w-full -->
+            
+            <!-- --- إضافة خيار التطابق التام --- -->
+            <div id="search-options" class="flex justify-start items-center mb-4 w-full"> <!-- إزالة px-2 للمحاذاة + إضافة w-full -->
+                <input type="checkbox" id="exact-match-checkbox" class="w-4 h-4 text-yellow-500 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500 focus:ring-2 cursor-pointer">
+                <label for="exact-match-checkbox" class="mr-3 text-sm font-medium text-gray-300 cursor-pointer select-none">إظهار النتائج المتطابقة فقط</label>
+            </div>
+            <!-- --- نهاية الإضافة --- -->
+
             <div id="infinite-hits" class="grid grid-cols-1 gap-4"></div>
             <div id="load-more" class="mt-6"></div>
         </div>
@@ -282,6 +325,7 @@
     // جلب العناصر الأساسية للتحكم بالحركة
     const mainContent = document.getElementById('main-content');
     const resultsArea = document.getElementById('results-area');
+    const exactMatchCheckbox = document.getElementById('exact-match-checkbox');
 
     // تهيئة Algolia
     const searchClient = algoliasearch(APP_ID, SEARCH_API_KEY);
@@ -291,6 +335,9 @@
       searchClient,
       searchParameters: {
         distinct: true, // تفعيل ميزة التمييز (Distinct) التي أعددناها
+        advancedSyntax: true, // <-- تفعيل البحث المتقدم (للسماح بالعبارات)
+        typoTolerance: true, // <-- الافتراضي هو التسامح مع الأخطاء
+        queryType: 'prefixLast' // <-- الافتراضي هو البحث العادي
       },
     });
 
@@ -299,7 +346,7 @@
         container: '#searchbox',
         placeholder: 'ابحث في محتوى جميع الكتب...',
         showSubmit: false,
-        showReset: true,
+        showReset: false, // <-- تم التعديل هنا لإخفاء الزر
         cssClasses: {
             root: 'relative',
             form: 'overflow-hidden rounded-xl', // إصلاح الزوايا
@@ -329,6 +376,7 @@
             root: 'ais-InfiniteHits',
             list: 'ais-InfiniteHits-list grid grid-cols-1 gap-4',
             item: 'ais-InfiniteHits-item',
+            // إصلاح ألوان الزر
             loadMore: 'w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md', 
             loadMoreRoot: 'flex justify-center mt-6',
             disabledLoadMore: 'ais-InfiniteHits-loadMore--disabled',
@@ -344,10 +392,7 @@
           },
           showMoreText: 'تحميل المزيد من النتائج',
           item(hit, { html, components }) {
-            // جلب نص البحث الحالي من حالة المساعد لضمان عدم كونه 'undefined'
-            // const currentQuery = search.helper ? search.helper.state.query : '';
-            
-            // --- تعديل: جلب النص المظلل الفعلي من النتيجة ---
+            // --- إصلاح: جلب النص المظلل الفعلي من النتيجة ---
             let highlightQuery = '';
             if (hit._snippetResult && hit._snippetResult.text && hit._snippetResult.text.value) {
                 const snippetHTML = hit._snippetResult.text.value;
@@ -365,7 +410,7 @@
             if (highlightQuery === '' && search.helper) {
                 highlightQuery = search.helper.state.query;
             }
-            // --- نهاية التعديل ---
+            // --- نهاية الإصلاح ---
 
             // إنشاء رابط النتيجة
             const url = `index.html#/book/${hit.bookId}/volume/${hit.volumeNumber}/page/${hit.pageNumber}?highlight=${encodeURIComponent(highlightQuery)}`;
@@ -422,6 +467,19 @@
     // بدء البحث (بشكل أولي، بدون استعراض، للتحكم في العرض)
     search.start();
 
+    // --- إضافة منطق خيار التطابق التام ---
+    exactMatchCheckbox.addEventListener('change', () => {
+        if (exactMatchCheckbox.checked) {
+            // بحث دقيق: إلغاء التسامح مع الأخطاء الإملائية + إلغاء مطابقة بداية الكلمة
+            // (كان 'phrase' وأصبح 'prefixNone' لضمان مطابقة الكلمة كاملة)
+            search.helper.setQueryParameter('typoTolerance', false).setQueryParameter('queryType', 'prefixNone').search();
+        } else {
+            // بحث تقريبي (افتراضي): تفعيل التسامح + العودة للبحث العادي (بمطابقة بداية الكلمة الأخيرة)
+            search.helper.setQueryParameter('typoTolerance', true).setQueryParameter('queryType', 'prefixLast').search();
+        }
+    });
+    // --- نهاية الإضافة ---
+
     // لمنع الظهور المؤقت للنتائج قبل تطبيق المنطق
     document.addEventListener('DOMContentLoaded', () => {
         // إذا كان هناك استعلام في الرابط (شارك أحدهم رابط بحث مثلاً)
@@ -438,5 +496,4 @@
     </script>
 </body>
 </html>
-
 
