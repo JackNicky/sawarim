@@ -6,6 +6,7 @@
     <title>بحث ذكي وفوري - مكتبة إلكترونية</title>
     
     <!-- 1. تحميل Tailwind CSS -->
+    <!-- (إصلاح) تم تصحيح الرابط. كان "cdn/tailwindcss.com" -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. تحميل مكتبة Algolia للبحث الفوري (InstantSearch.js) -->
@@ -313,7 +314,7 @@
             transition: all 0.3s ease-in-out;
             transform: translate(-50%, -45%); /* للأنيميشن */
             overflow: hidden; /* لإدارة المحتوى الداخلي */
-            display: flex;
+            /* (إصلاح) تم حذف 'display: flex;' المكرر من هنا */
             flex-direction: column;
         }
         #modal-header {
@@ -653,11 +654,18 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
         `; // سهم متجه لليسار (سيبدو كـ "رجوع" في RTL)
         
-        backButton.onclick = () => {
+        // (تعديل) *** هذا هو الإصلاح لمشكلة زر الرجوع ***
+        // 1. إنشاء دالة معالج الحدث
+        const handleBackButtonClick = () => {
             // العودة للوسط
             hideAllResults();
             setDisplayMode('center');
         };
+        
+        // 2. ربط 'click' (للمتصفح) و 'touchend' (للهاتف)
+        backButton.addEventListener('click', handleBackButtonClick);
+        backButton.addEventListener('touchend', handleBackButtonClick);
+        // *** نهاية التعديل ***
 
         header.appendChild(title);
         header.appendChild(backButton);
@@ -797,6 +805,9 @@
     // --- *** نهاية التعديل *** ---
 
     // --- *** تعديل: منطق العرض الرئيسي *** ---
+    
+    // (تعديل) *** تم حذف متغير listenersAttached ***
+
     search.on('render', () => {
         const query = search.helper.state.query;
         if (query && query.trim().length > 0) {
@@ -808,26 +819,32 @@
             setDisplayMode('center');
             hideAllResults(); // <--- استخدام الدالة الجديدة
         }
+
+        // (تعديل) *** تم حذف كود ربط الأحداث المخصص من هنا ***
+        // سنعتمد على السلوك الافتراضي للمتصفح (النقر المباشر على الإدخال)
+        // وهو ما كان يعمل في الإصدار القديم بسلاسة.
     });
     // --- *** نهاية التعديل *** ---
-
-    search.start();
-
-    exactMatchCheckbox.addEventListener('change', () => {
-        if (exactMatchCheckbox.checked) {
-            search.helper.setQueryParameter('typoTolerance', false)
-                         .setQueryParameter('queryType', 'phrase')
-                         .search();
-        } else {
-            search.helper.setQueryParameter('typoTolerance', true)
-                         .setQueryParameter('queryType', 'prefixLast')
-                         .search();
-        }
-    });
 
     document.addEventListener('DOMContentLoaded', () => {
         loadSuggestedSearches(); // تحميل الأزرار
         
+        // (تعديل) بدء Algolia فقط بعد تحميل الـ DOM
+        search.start(); 
+
+        // (تعديل) ربط مستمع "التطابق التام" بعد بدء التشغيل
+        exactMatchCheckbox.addEventListener('change', () => {
+            if (exactMatchCheckbox.checked) {
+                search.helper.setQueryParameter('typoTolerance', false)
+                             .setQueryParameter('queryType', 'phrase')
+                             .search();
+            } else {
+                search.helper.setQueryParameter('typoTolerance', true)
+                             .setQueryParameter('queryType', 'prefixLast')
+                             .search();
+            }
+        });
+
         const urlParams = new URLSearchParams(window.location.search);
         const queryFromUrl = urlParams.get('query');
         if (queryFromUrl) {
@@ -837,20 +854,12 @@
             hideAllResults(); // التأكد من إخفاء كل شيء في البداية
         }
         
-        // (إضافة) تفعيل صندوق البحث عند النقر على الحاوية
-        const searchBoxWrapper = document.getElementById('searchbox-wrapper');
-        searchBoxWrapper.addEventListener('click', (e) => {
-            // التأكد من أن النقر ليس على زر الرجوع أو شيء آخر
-            if (mainContent.classList.contains('center-mode')) {
-                const searchInput = searchBoxWrapper.querySelector('.ais-SearchBox-input');
-                if (searchInput) {
-                    searchInput.focus();
-                }
-            }
-        });
+        /* --- (تعديل) تم حذف معالج النقر واللمس من هنا --- */
+
     });
 
     </script>
 </body>
 </html>
+
 
