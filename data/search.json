@@ -1,13 +1,75 @@
 [
-  {
-    "title": "حديث النورانية",
+ {
+    "title": "الخطبة الافتخارية",
     "links": [
       {
-        "subtitle": "من كتاب سليم بن قيس (تحقيق الأنصاري)",
-        "bookId": 6,
+        "subtitle": "مشارق أنوار اليقين، ص 260",
+        "bookId": 18,
         "volumeNumber": 1,
-        "pageNumber": 275,
-        "highlightText": "يا سلمان ويا جندب"
+        "pageNumber": 260,
+        "highlightText": "خطبة الافتخار"
+      }
+    ]
+  },
+  {
+    "title": "الخطبة التطنجية",
+    "links": [
+      {
+        "subtitle": "إلزام الناصب في إثبات الحجة الغائب، ج 2 - ص 210",
+        "bookId": 12,
+        "volumeNumber": 2,
+        "pageNumber": 210,
+        "highlightText": "خطبة التطنجية"
+      },
+      {
+        "subtitle": "مشارق أنوار اليقين، ص 263",
+        "bookId": 18,
+        "volumeNumber": 1,
+        "pageNumber": 263,
+        "highlightText": "خطبة التطنجية"
+      }
+    ]
+  },
+  {
+    "title": "الخطبة الشقشقية",
+    "links": [
+      {
+        "subtitle": "مناقب آل أبي طالب، ج 2 - ص 48",
+        "bookId": 31,
+        "volumeNumber": 2,
+        "pageNumber": 48,
+        "highlightText": "الشقشقية ، المقمصة :"
+      }
+    ]
+  },
+ {
+    "title": "خطبة البيان",
+    "links": [
+      {
+        "subtitle": "إلزام الناصب في إثبات الحجة الغائب، ج 2 - ص 157",
+        "bookId": 12,
+        "volumeNumber": 2,
+        "pageNumber": 157,
+        "highlightText": "خطبة البيان :"
+      }
+    ]
+  },
+  {
+    "title": "حديث النورانية المقدس",
+    "links": [
+      {
+        "subtitle": "بحار الأنوار، ج 26 - ص 3",
+        "bookId": 36,
+        "volumeNumber": 26,
+        "pageNumber": 3,
+        "highlightText": "معرفة الامام أمير المؤمنين ( عليه السلام ) بالنورانية"
+      },
+      {
+        "subtitle": "مشارق أنوار اليقين، ص 255",
+        "bookId": 18,
+        "volumeNumber": 1,
+        "pageNumber": 255,
+        "highlightText": "معرفة الإمام بالنورانية"
       }
     ]
   },
@@ -15,18 +77,18 @@
     "title": "حديث الكساء",
     "links": [
       {
-        "subtitle": "من كتاب بحار الأنوار",
-        "bookId": 36,
-        "volumeNumber": 35,
-        "pageNumber": 200,
-        "highlightText": "اللهم هؤلاء أهل بيتي"
+        "subtitle": "عوالم العلوم ، السيدة الزهراء ( ع ) - ج 2 - ص 395",
+        "bookId": 34,
+        "volumeNumber": 4,
+        "pageNumber": 395,
+        "highlightText": "حديث الكساء الشريف"
       },
       {
-        "subtitle": "رواية أخرى (مثال)",
-        "bookId": 34,
+        "subtitle": "مفاتيح الجنان، ص 867",
+        "bookId": 21,
         "volumeNumber": 1,
-        "pageNumber": 100,
-        "highlightText": "أهل بيت النبوة"
+        "pageNumber": 867,
+        "highlightText": "حديث الكساء"
       }
     ]
   },
@@ -34,23 +96,37 @@
     "title": "خطبة النبي يوم الغدير",
     "links": [
       {
-        "subtitle": "من كتاب غاية المرام",
+        "subtitle": "غاية المرام وحجة الخصام، ج 4 - ص 194",
         "bookId": 9,
-        "volumeNumber": 1,
-        "pageNumber": 50,
-        "highlightText": "من كنت مولاه"
+        "volumeNumber": 4,
+        "pageNumber": 194,
+        "highlightText": "لما كان يوم غدير خم"
+      },
+      {
+        "subtitle": "البرهان في تفسير القرآن، ج 5 - ص 484",
+        "bookId": 4,
+        "volumeNumber": 5,
+        "pageNumber": 484,
+        "highlightText": "لما كان يوم غدير خم"
       }
     ]
   },
   {
-    "title": "خطبة الزهراء (ع) الفدكية",
+    "title": "الخطبة الفدكية",
     "links": [
       {
-        "subtitle": "من كتاب مشارق أنوار اليقين",
-        "bookId": 18,
+        "subtitle": "بحار الأنوار، ج 29 - ص 268",
+        "bookId": 36,
+        "volumeNumber": 29,
+        "pageNumber": 268,
+        "highlightText": "أنه لما أجمع أبو بكر ( 3 ) على منع فاطمة عليها السلام فدك ، وبلغها ذلك لاتت ( 4 ) خمارها على رأسها واشتملت بجلبابها وأقبلت في لمة من حفدتها ونساء"
+      },
+      {
+        "subtitle": "الاحتجاج، ج 1 - ص 141",
+        "bookId": 19,
         "volumeNumber": 1,
-        "pageNumber": 150,
-        "highlightText": "أيها الناس اعلموا أني فاطمة"
+        "pageNumber": 141,
+        "highlightText": "إنه لما أجمع ( 2 ) أبو بكر وعمر على منع فاطمة عليها السلام فدكا وبلغها ذلك ( 3 ) . ."
       }
     ]
   },
@@ -58,11 +134,18 @@
     "title": "حديث الثقلين",
     "links": [
       {
-        "subtitle": "من كتاب الكافي",
-        "bookId": 2,
+        "subtitle": "بحار الأنوار، ج 23 - ص 135",
+        "bookId": 36,
+        "volumeNumber": 23,
+        "pageNumber": 135,
+        "highlightText": "إني تارك فيكم الثقلين"
+      },
+      {
+        "subtitle": "البرهان في تفسير القرآن، ج 1 - ص 86",
+        "bookId": 4,
         "volumeNumber": 1,
-        "pageNumber": 120,
-        "highlightText": "كتاب الله وعترتي"
+        "pageNumber": 86,
+        "highlightText": "إني تارك فيكم الثقلين"
       }
     ]
   },
@@ -70,11 +153,11 @@
     "title": "زيارة عاشوراء",
     "links": [
       {
-        "subtitle": "من كتاب مفاتيح الجنان",
+        "subtitle": "مفاتيح الجنان، ص 665",
         "bookId": 21,
         "volumeNumber": 1,
-        "pageNumber": 450,
-        "highlightText": "السلام عليك يا أبا عبد الله"
+        "pageNumber": 665,
+        "highlightText": "تقول :"
       }
     ]
   }
