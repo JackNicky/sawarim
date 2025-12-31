@@ -112,220 +112,100 @@
         <div id="modal-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2"></div>
     </div>
 
-    <script>
-        // --- الإعدادات ---
-        const CONFIG = {
-            partsPath: 'data/index_parts/docs_part_',
-            totalParts: 11,
-            resultsPerPage: 20
-        };
+  <script>
+    // إنشاء "عامل خلفي" Web Worker داخل الكود لسهولة الرفع على GitHub
+    const workerCode = `
+        importScripts('https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@0.7.31/dist/flexsearch.bundle.js');
 
-        // --- محرك البحث ---
-        const flexIndex = new FlexSearch.Document({
-            document: {
-                id: "id",
-                index: ["text", "bookTitle"],
-                store: ["bookTitle", "volumeNumber", "pageNumber", "text", "bookId"]
-            },
-            tokenize: "full",
-            language: "ar",
-            cache: true
+        let index = new FlexSearch.Document({
+            document: { id: "id", index: ["text", "bookTitle"], store: ["bookTitle", "volumeNumber", "pageNumber", "text", "bookId"] },
+            tokenize: "full", language: "ar", cache: true
         });
 
-        let allDocs = [];
-        let curatedData = [];
-        let currentSearchQuery = "";
+        let loadedParts = 0;
 
-        const input = document.getElementById('main-search-input');
-        const resultsList = document.getElementById('results-list');
-        const resultsArea = document.getElementById('results-area');
-        const mainContent = document.getElementById('main-content');
-        const loadingOverlay = document.getElementById('loading-overlay');
+        onmessage = async function(e) {
+            const { type, query, partsPath, totalParts } = e.data;
 
-        // --- 1. تحميل البيانات بالتوازي ---
-        async function loadLibrary() {
-            loadingOverlay.classList.remove('hidden');
-            const start = performance.now();
-
-            try {
-                // تحميل ملف الاقتراحات أولاً لإظهاره للمستخدم بسرعة
-                const curatedRes = await fetch('data/search.json');
-                curatedData = await curatedRes.json();
-                renderSuggestions();
-
-                // تحميل الأجزاء الـ 11 بالتوازي
-                const fetchPromises = Array.from({ length: CONFIG.totalParts }, (_, i) => 
-                    fetch(`${CONFIG.partsPath}${i + 1}.json`).then(r => r.json())
-                );
-
-                const parts = await Promise.all(fetchPromises);
-                
-                parts.forEach(part => {
-                    const records = Array.isArray(part) ? part : (part.records || []);
-                    records.forEach(doc => {
-                        flexIndex.add(doc);
-                        allDocs.push(doc); // للتخزين المحلي السريع
-                    });
-                });
-
-                const end = performance.now();
-                console.log(`تمت الفهرسة في ${((end - start)/1000).toFixed(2)} ثانية`);
-                
-                // تفعيل مربع البحث بعد الجاهزية
-                input.disabled = false;
-                input.placeholder = "ابحث الآن في محتوى المكتبة...";
-                document.getElementById('loading-text').innerText = "المكتبة جاهزة للبحث";
-                setTimeout(() => loadingOverlay.classList.add('hidden'), 2000);
-
-            } catch (err) {
-                console.error("خطأ في التحميل:", err);
-                document.getElementById('loading-text').innerText = "حدث خطأ أثناء تحميل البيانات";
+            if (type === 'LOAD_DATA') {
+                for (let i = 1; i <= totalParts; i++) {
+                    try {
+                        const response = await fetch(partsPath + i + '.json');
+                        const data = await response.json();
+                        const records = Array.isArray(data) ? data : (data.records || []);
+                        
+                        records.forEach(doc => index.add(doc));
+                        loadedParts++;
+                        
+                        // إبلاغ الواجهة بتقدم التحميل
+                        postMessage({ type: 'PROGRESS', loadedParts });
+                    } catch (err) { console.error('Error loading part ' + i, err); }
+                }
             }
-        }
 
-        // --- 2. منطق البحث الفوري ---
+            if (type === 'SEARCH') {
+                const start = Date.now();
+                const results = index.search(query, { limit: 20, enrich: true });
+                const end = Date.now();
+                
+                // إرسال النتائج فوراً
+                const data = results.length > 0 ? results[0].result.map(r => r.doc) : [];
+                postMessage({ type: 'RESULTS', data, time: (end - start), query });
+            }
+        };
+    `;
+
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const worker = new Worker(URL.createObjectURL(blob));
+
+    // --- منطق الواجهة ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('main-search-input');
+        
+        // 1. تفعيل البحث فوراً (حتى قبل تحميل البيانات الثقيلة)
+        input.disabled = false;
+        input.placeholder = "ابحث الآن...";
+
+        // 2. بدء تحميل البيانات في الخلفية فوراً دون تأخير الواجهة
+        worker.postMessage({ 
+            type: 'LOAD_DATA', 
+            partsPath: 'data/index_parts/docs_part_', 
+            totalParts: 11 
+        });
+
+        // 3. معالجة البحث
         input.addEventListener('input', (e) => {
             const query = e.target.value.trim();
-            currentSearchQuery = query;
-
             if (query.length > 1) {
                 switchToSearchMode();
-                performLocalSearch(query);
+                // إرسال طلب البحث للـ Worker (المعالجة تتم في خلفية المتصفح)
+                worker.postMessage({ type: 'SEARCH', query });
             } else {
                 switchToCenterMode();
             }
         });
 
-        function performLocalSearch(query) {
-            const start = performance.now();
-            
-            const results = flexIndex.search(query, {
-                limit: CONFIG.resultsPerPage,
-                enrich: true,
-                suggest: true
-            });
-
-            const end = performance.now();
-            const time = (end - start).toFixed(2);
-
-            // استخراج البيانات من نتائج FlexSearch
-            const data = results.length > 0 ? results[0].result.map(r => r.doc) : [];
-            renderResults(data, query, time);
-        }
-
-        function renderResults(list, query, time) {
-            resultsList.innerHTML = '';
-            document.getElementById('search-meta').innerHTML = `
-                <span>تم العثور على <b>${list.length}</b> نتيجة</span>
-                <span>الزمن: ${time}ms</span>
-            `;
-
-            if (list.length === 0) {
-                resultsList.innerHTML = `<div class="text-center py-20 text-gray-500 text-lg">لم نعثر على نتائج لـ "${query}"</div>`;
-                return;
+        // 4. استقبال النتائج من الـ Worker
+        worker.onmessage = function(e) {
+            if (e.data.type === 'RESULTS') {
+                renderResults(e.data.data, e.data.query, e.data.time);
             }
+            if (e.data.type === 'PROGRESS') {
+                updateLoadingStatus(e.data.loadedParts);
+            }
+        };
+    });
 
-            list.forEach(item => {
-                // تمييز النص (Highlight)
-                const regex = new RegExp(`(${query})`, 'gi');
-                const snippet = item.text.length > 250 ? item.text.substring(0, 250) + "..." : item.text;
-                const highlightedSnippet = snippet.replace(regex, '<span class="highlight">$1</span>');
-                
-                const url = `index.html#/book/${item.bookId}/volume/${item.volumeNumber}/page/${item.pageNumber}?highlight=${encodeURIComponent(query)}`;
-                
-                const html = `
-                    <a href="${url}" target="_blank" class="result-card">
-                        <div class="text-yellow-500 font-bold text-xl mb-1">${item.bookTitle}</div>
-                        <div class="text-gray-400 text-sm mb-3 flex gap-4">
-                            <span>الجزء: ${item.volumeNumber}</span>
-                            <span>الصفحة: ${item.pageNumber}</span>
-                        </div>
-                        <div class="text-gray-300 leading-relaxed text-sm md:text-base">${highlightedSnippet}</div>
-                    </a>
-                `;
-                resultsList.insertAdjacentHTML('beforeend', html);
-            });
+    function updateLoadingStatus(loaded) {
+        const status = document.getElementById('loading-text');
+        const percent = Math.round((loaded / 11) * 100);
+        status.innerText = `جاري تحديث قاعدة البيانات: ${percent}%`;
+        if (percent === 100) {
+            setTimeout(() => document.getElementById('loading-overlay').classList.add('hidden'), 2000);
+        } else {
+            document.getElementById('loading-overlay').classList.remove('hidden');
         }
-
-        // --- 3. واجهة المستخدم والتنقل ---
-        function switchToSearchMode() {
-            mainContent.classList.replace('center-mode', 'search-mode');
-            resultsArea.classList.remove('hidden');
-            document.getElementById('suggestions-box').classList.add('hidden');
-            document.getElementById('back-btn').classList.remove('hidden');
-        }
-
-        function switchToCenterMode() {
-            mainContent.classList.replace('search-mode', 'center-mode');
-            resultsArea.classList.add('hidden');
-            document.getElementById('suggestions-box').classList.remove('hidden');
-            document.getElementById('back-btn').classList.add('hidden');
-            input.value = "";
-        }
-
-        function renderSuggestions() {
-            const container = document.getElementById('suggestions-box');
-            const shuffle = curatedData.sort(() => 0.5 - Math.random()).slice(0, 4);
-            
-            container.innerHTML = '';
-            shuffle.forEach(item => {
-                const btn = document.createElement('button');
-                btn.className = "bg-gray-800 hover:bg-yellow-600 hover:text-black text-gray-300 px-5 py-2.5 rounded-full text-sm transition-all duration-300 shadow-lg";
-                btn.textContent = item.title;
-                btn.onclick = () => showCurated(item);
-                container.appendChild(btn);
-            });
-
-            const moreBtn = document.createElement('button');
-            moreBtn.className = "border border-yellow-500 text-yellow-500 px-5 py-2.5 rounded-full text-sm hover:bg-yellow-500 hover:text-black transition";
-            moreBtn.textContent = "استعراض الكل...";
-            moreBtn.onclick = openModal;
-            container.appendChild(moreBtn);
-        }
-
-        function showCurated(item) {
-            switchToSearchMode();
-            input.value = item.title;
-            resultsList.innerHTML = `<h2 class="text-2xl text-yellow-500 font-bold mb-6 border-r-4 border-yellow-500 pr-4">اقتراحات: ${item.title}</h2>`;
-            
-            item.links.forEach(link => {
-                const url = `index.html#/book/${link.bookId}/volume/${link.volumeNumber}/page/${link.pageNumber}?highlight=${encodeURIComponent(link.highlightText)}`;
-                const html = `
-                    <a href="${url}" target="_blank" class="result-card">
-                        <div class="text-yellow-500 font-bold text-lg">${item.title}</div>
-                        <div class="text-gray-400 text-sm mt-1">${link.subtitle}</div>
-                        <div class="text-gray-500 italic text-sm mt-2">"${link.highlightText.substring(0, 80)}..."</div>
-                    </a>
-                `;
-                resultsList.insertAdjacentHTML('beforeend', html);
-            });
-            document.getElementById('search-meta').innerHTML = "";
-        }
-
-        // --- Modal ---
-        function openModal() {
-            const list = document.getElementById('modal-list');
-            list.innerHTML = '';
-            curatedData.forEach(item => {
-                const b = document.createElement('button');
-                b.className = "w-full text-right p-4 bg-gray-800 hover:bg-yellow-500 hover:text-black rounded-lg transition mb-2 font-medium";
-                b.textContent = item.title;
-                b.onclick = () => { closeModal(); showCurated(item); };
-                list.appendChild(b);
-            });
-            document.getElementById('modal-overlay').classList.add('visible');
-            document.getElementById('modal-container').classList.add('visible');
-        }
-
-        function closeModal() {
-            document.getElementById('modal-overlay').classList.remove('visible');
-            document.getElementById('modal-container').classList.remove('visible');
-        }
-
-        document.getElementById('modal-overlay').onclick = closeModal;
-
-        // بدء التحميل عند فتح الصفحة
-        window.addEventListener('DOMContentLoaded', loadLibrary);
-    </script>
+    }
+</script>
 </body>
 </html>
