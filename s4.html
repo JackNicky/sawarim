@@ -3,209 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>البحث الذكي المحلي - مكتبة صوارم حيدرية</title>
+    <title>البحث الذكي - النسخة المستقرة</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@0.7.31/dist/flexsearch.bundle.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        body { 
-            font-family: 'Tajawal', sans-serif; 
-            background-color: #111827; 
-            color: #d1d5db; 
-            overflow-x: hidden; 
-        }
-
-        /* تأثيرات الانتقال بين الوضعين */
-        #main-content { transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        
-        #main-content.center-mode {
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            min-height: 100vh; max-width: 42rem; margin: 0 auto;
-        }
-
-        #main-content.search-mode {
-            padding-top: 2rem; max-width: 64rem; margin: 0 auto;
-        }
-
-        /* تنسيق صندوق البحث */
-        #search-block { width: 100%; transition: all 0.5s; }
-        .center-mode #search-block { display: flex; flex-direction: column; align-items: center; }
-        .search-mode #search-block { display: flex; flex-direction: row; gap: 1rem; border-bottom: 1px solid #374151; padding-bottom: 1.5rem; }
-
-        .search-input {
-            width: 100%; background-color: #1f2937; color: #f3f4f6;
-            border: 1px solid #374151; border-radius: 0.75rem;
-            padding: 0.85rem 1.5rem; font-size: 1.1rem; transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-        .search-input:focus { border-color: #f59e0b; outline: none; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3); }
-
-        /* نتائج البحث */
-        .result-card {
-            background-color: #1f2937; border: 1px solid #374151;
-            border-radius: 0.8rem; padding: 1.5rem; margin-bottom: 1rem;
-            transition: transform 0.2s, background 0.2s; display: block;
-        }
-        .result-card:hover { background-color: #2b3a4a; transform: translateY(-3px); }
-        .highlight { color: #facc15; font-weight: bold; background: rgba(245, 158, 11, 0.1); padding: 0 2px; }
-
-        /* شاشة التحميل */
-        #loading-overlay {
-            position: fixed; bottom: 20px; left: 20px;
-            background: #1f2937; padding: 10px 20px; border-radius: 50px;
-            display: flex; align-items: center; gap: 10px; border: 1px solid #f59e0b;
-            z-index: 100; font-size: 0.9rem;
-        }
-
-        /* Modal */
-        #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; z-index: 1000; opacity: 0; transition: 0.3s; }
-        #modal-container { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1f2937; width: 90%; max-width: 500px; border-radius: 1rem; display: none; z-index: 1001; }
-        .visible { display: block !important; opacity: 1 !important; }
+        body { font-family: 'Tajawal', sans-serif; background-color: #111827; color: #d1d5db; }
+        .center-mode { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .search-mode { padding-top: 2rem; }
+        .highlight { color: #facc15; font-weight: bold; background: rgba(245, 158, 11, 0.2); }
+        .result-card { background: #1f2937; border: 1px solid #374151; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; display: block; }
+        #debug-console { position: fixed; bottom: 0; right: 0; background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace; font-size: 10px; max-height: 100px; overflow: auto; width: 100%; z-index: 9999; padding: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="loading-overlay" class="hidden">
-        <div class="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent"></div>
-        <span id="loading-text">جاري مزامنة المكتبة...</span>
-    </div>
+    <div id="debug-console">جاري بدء النظام...</div>
 
     <main id="main-content" class="container mx-auto p-4 center-mode">
-        
-        <div id="search-block">
-            <img id="logo-img" src="logo.png" class="transition-all duration-500 center-mode:w-48 search-mode:w-16 h-auto mb-4" 
-                 onerror="this.src='https://placehold.co/200x80/111827/F59E0B?text=المكتبة&font=tajawal'">
+        <div id="search-block" class="w-full max-w-2xl text-center">
+            <h1 id="logo-text" class="text-3xl font-bold text-yellow-500 mb-6 transition-all">مكتبة صوارم حيدرية</h1>
             
             <div class="relative w-full">
-                <input type="text" id="main-search-input" class="search-input" placeholder="ابحث في آلاف الصفحات فوراً..." disabled>
-                <div id="search-status-icon" class="absolute left-4 top-3.5 text-gray-500">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" id="search-input" 
+                       class="w-full bg-gray-800 text-white border border-gray-700 rounded-xl p-4 text-lg focus:outline-none focus:border-yellow-500 transition-all" 
+                       placeholder="جاري تحميل قاعدة البيانات... انتظر قليلاً" disabled>
+                <div id="loader-icon" class="absolute left-4 top-4">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500"></div>
                 </div>
             </div>
-
-            <a href="./index.html" id="back-btn" class="hidden search-mode:flex items-center bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-6 rounded-lg transition shrink-0 h-12">
-                الرجوع
-            </a>
+            
+            <div id="status-msg" class="text-xs text-gray-500 mt-2">جاري فحص الملفات...</div>
         </div>
 
-        <div id="suggestions-box" class="flex flex-wrap justify-center gap-3 mt-8"></div>
-
-        <div id="results-area" class="w-full mt-10 hidden">
-            <div id="search-meta" class="text-gray-400 text-sm mb-6 flex justify-between"></div>
-            <div id="results-list" class="space-y-4"></div>
-            <button id="load-more" class="hidden w-full py-4 mt-6 bg-gray-800 text-yellow-500 rounded-xl border border-gray-700 font-bold hover:bg-gray-700 transition">تحميل المزيد من النتائج</button>
+        <div id="results-area" class="w-full max-w-4xl mt-10 hidden">
+            <div id="meta-info" class="text-sm text-gray-400 mb-4"></div>
+            <div id="results-list"></div>
         </div>
-
     </main>
 
-    <div id="modal-overlay"></div>
-    <div id="modal-container" class="p-6">
-        <div class="flex justify-between items-center mb-6 border-bottom border-gray-700 pb-2">
-            <h3 class="text-yellow-500 font-bold text-xl">استعراض المواضيع</h3>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-white">✕</button>
-        </div>
-        <div id="modal-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2"></div>
-    </div>
+    <script>
+        // --- إعدادات النظام ---
+        const log = (msg) => {
+            const consoleDiv = document.getElementById('debug-console');
+            consoleDiv.innerHTML += `> ${msg}<br>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
 
-  <script>
-    // إنشاء "عامل خلفي" Web Worker داخل الكود لسهولة الرفع على GitHub
-    const workerCode = `
-        importScripts('https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@0.7.31/dist/flexsearch.bundle.js');
-
-        let index = new FlexSearch.Document({
-            document: { id: "id", index: ["text", "bookTitle"], store: ["bookTitle", "volumeNumber", "pageNumber", "text", "bookId"] },
-            tokenize: "full", language: "ar", cache: true
+        const flexIndex = new FlexSearch.Document({
+            document: {
+                id: "id",
+                index: ["text", "bookTitle"],
+                store: ["bookTitle", "volumeNumber", "pageNumber", "text", "bookId"]
+            },
+            tokenize: "full",
+            language: "ar"
         });
 
-        let loadedParts = 0;
+        const input = document.getElementById('search-input');
+        const statusMsg = document.getElementById('status-msg');
+        const resultsArea = document.getElementById('results-area');
+        const resultsList = document.getElementById('results-list');
+        const mainContent = document.getElementById('main-content');
 
-        onmessage = async function(e) {
-            const { type, query, partsPath, totalParts } = e.data;
+        // --- وظيفة التحميل الذكي ---
+        async function init() {
+            try {
+                log("بدء تحميل ملفات JSON...");
+                let loadedCount = 0;
+                const totalParts = 11;
 
-            if (type === 'LOAD_DATA') {
-                for (let i = 1; i <= totalParts; i++) {
+                // تحميل الأجزاء بشكل متوازي
+                const loadPromises = Array.from({ length: totalParts }, async (_, i) => {
+                    const partNum = i + 1;
+                    const path = `./data/index_parts/docs_part_${partNum}.json`;
+                    
                     try {
-                        const response = await fetch(partsPath + i + '.json');
+                        const response = await fetch(path);
+                        if (!response.ok) throw new Error(`Status ${response.status}`);
                         const data = await response.json();
+                        
+                        // معالجة البيانات وإضافتها للفهرس
                         const records = Array.isArray(data) ? data : (data.records || []);
+                        records.forEach(doc => flexIndex.add(doc));
                         
-                        records.forEach(doc => index.add(doc));
-                        loadedParts++;
-                        
-                        // إبلاغ الواجهة بتقدم التحميل
-                        postMessage({ type: 'PROGRESS', loadedParts });
-                    } catch (err) { console.error('Error loading part ' + i, err); }
-                }
+                        loadedCount++;
+                        statusMsg.innerText = `تم تحميل ${loadedCount} من ${totalParts} جزء...`;
+                        log(`تم تحميل الجزء ${partNum} بنجاح`);
+
+                        // تفعيل البحث بمجرد تحميل أول جزء لضمان "السرعة الفائقة"
+                        if (loadedCount === 1) {
+                            input.disabled = false;
+                            input.placeholder = "ابدأ البحث الآن...";
+                            document.getElementById('loader-icon').classList.add('hidden');
+                        }
+                    } catch (err) {
+                        log(`خطأ في تحميل الجزء ${partNum}: ${err.message}`);
+                    }
+                });
+
+                await Promise.all(loadPromises);
+                statusMsg.innerText = "المكتبة جاهزة تماماً للبحث الفوري";
+                log("اكتمل تحميل جميع الأجزاء.");
+
+            } catch (err) {
+                log(`فشل ذريع في النظام: ${err.message}`);
             }
-
-            if (type === 'SEARCH') {
-                const start = Date.now();
-                const results = index.search(query, { limit: 20, enrich: true });
-                const end = Date.now();
-                
-                // إرسال النتائج فوراً
-                const data = results.length > 0 ? results[0].result.map(r => r.doc) : [];
-                postMessage({ type: 'RESULTS', data, time: (end - start), query });
-            }
-        };
-    `;
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
-
-    // --- منطق الواجهة ---
-    document.addEventListener('DOMContentLoaded', () => {
-        const input = document.getElementById('main-search-input');
-        
-        // 1. تفعيل البحث فوراً (حتى قبل تحميل البيانات الثقيلة)
-        input.disabled = false;
-        input.placeholder = "ابحث الآن...";
-
-        // 2. بدء تحميل البيانات في الخلفية فوراً دون تأخير الواجهة
-        worker.postMessage({ 
-            type: 'LOAD_DATA', 
-            partsPath: 'data/index_parts/docs_part_', 
-            totalParts: 11 
-        });
-
-        // 3. معالجة البحث
-        input.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            if (query.length > 1) {
-                switchToSearchMode();
-                // إرسال طلب البحث للـ Worker (المعالجة تتم في خلفية المتصفح)
-                worker.postMessage({ type: 'SEARCH', query });
-            } else {
-                switchToCenterMode();
-            }
-        });
-
-        // 4. استقبال النتائج من الـ Worker
-        worker.onmessage = function(e) {
-            if (e.data.type === 'RESULTS') {
-                renderResults(e.data.data, e.data.query, e.data.time);
-            }
-            if (e.data.type === 'PROGRESS') {
-                updateLoadingStatus(e.data.loadedParts);
-            }
-        };
-    });
-
-    function updateLoadingStatus(loaded) {
-        const status = document.getElementById('loading-text');
-        const percent = Math.round((loaded / 11) * 100);
-        status.innerText = `جاري تحديث قاعدة البيانات: ${percent}%`;
-        if (percent === 100) {
-            setTimeout(() => document.getElementById('loading-overlay').classList.add('hidden'), 2000);
-        } else {
-            document.getElementById('loading-overlay').classList.remove('hidden');
         }
-    }
-</script>
+
+        // --- معالج البحث ---
+        input.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            
+            if (query.length > 1) {
+                // الانتقال لوضع البحث
+                mainContent.classList.remove('center-mode');
+                mainContent.classList.add('search-mode');
+                resultsArea.classList.remove('hidden');
+                document.getElementById('logo-text').classList.add('text-xl', 'mb-2');
+
+                const start = performance.now();
+                const results = await flexIndex.search(query, { limit: 30, enrich: true });
+                const end = performance.now();
+
+                displayResults(results, query, (end - start).toFixed(2));
+            } else {
+                mainContent.classList.add('center-mode');
+                mainContent.classList.remove('search-mode');
+                resultsArea.classList.add('hidden');
+            }
+        });
+
+        function displayResults(results, query, time) {
+            resultsList.innerHTML = '';
+            // تجميع النتائج من جميع الحقول
+            let rawData = [];
+            if (results && results.length > 0) {
+                const combined = new Set();
+                results.forEach(r => r.result.forEach(item => combined.add(JSON.stringify(item.doc))));
+                rawData = Array.from(combined).map(s => JSON.parse(s));
+            }
+
+            document.getElementById('meta-info').innerText = `تم العثور على ${rawData.length} نتيجة في ${time}ms`;
+
+            if (rawData.length === 0) {
+                resultsList.innerHTML = '<div class="text-center p-10">لا توجد نتائج تطابق بحثك</div>';
+                return;
+            }
+
+            rawData.forEach(doc => {
+                const url = `index.html#/book/${doc.bookId}/volume/${doc.volumeNumber}/page/${doc.pageNumber}?highlight=${encodeURIComponent(query)}`;
+                const snippet = doc.text.substring(0, 200).replace(new RegExp(query, 'gi'), m => `<span class="highlight">${m}</span>`);
+                
+                const card = `
+                    <a href="${url}" target="_blank" class="result-card">
+                        <div class="text-yellow-500 font-bold text-lg">${doc.bookTitle}</div>
+                        <div class="text-xs text-gray-500 mb-2">ج ${doc.volumeNumber} - ص ${doc.pageNumber}</div>
+                        <div class="text-sm leading-relaxed">${snippet}...</div>
+                    </a>
+                `;
+                resultsList.insertAdjacentHTML('beforeend', card);
+            });
+        }
+
+        // بدء التشغيل
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>
