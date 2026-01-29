@@ -3,93 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="manifest.json">
-    <title>بوابة FTTH الاحترافية</title>
+    <title>FTTH Manager Pro</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f3f4f6; --green: #10b981; --red: #ef4444; --dark: #1e293b; --purple: #7c3aed; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .search-box { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        select, input, button { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; }
-        input { flex: 1; min-width: 150px; }
-        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
-        .card { border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 15px; background: #fff; }
-        .status-badge { padding: 4px 10px; border-radius: 20px; color: white; font-size: 12px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: right; }
-        .loader { display: none; text-align: center; padding: 20px; font-weight: bold; color: var(--primary); }
+        :root { --primary: #2563eb; --bg: #f8fafc; --green: #10b981; --red: #ef4444; --dark: #0f172a; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--dark); }
+        .container { max-width: 700px; margin: auto; }
+        .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
+        select, input, button { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; }
+        input { flex: 1; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
+        .badge { padding: 4px 12px; border-radius: 20px; color: white; font-size: 12px; }
+        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th { background: #f1f5f9; padding: 10px; text-align: right; }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+        .loader { display: none; text-align: center; font-weight: bold; padding: 20px; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📡 نظام إدارة المشتركين</h1>
+    <h2 style="text-align:center;">📊 إدارة المشتركين</h2>
 
-    <div class="search-box">
-        <select id="searchType">
-            <option value="name">الاسم</option>
-            <option value="phone">الهاتف</option>
-            <option value="id">المعرف</option>
-            <option value="ont">السيريال</option>
-        </select>
-        <input type="text" id="searchInput" placeholder="ابحث هنا...">
-        <button onclick="performSearch()">بحث</button>
+    <div class="card">
+        <div class="search-row">
+            <select id="type">
+                <option value="name">الاسم</option>
+                <option value="phone">الهاتف</option>
+            </select>
+            <input type="text" id="val" placeholder="ابحث هنا...">
+            <button onclick="search()">بحث</button>
+        </div>
+        <div id="loader" class="loader">جاري جلب البيانات... 🔄</div>
+        <div id="results"></div>
     </div>
 
-    <div id="loader" class="loader">جاري معالجة البيانات... ⏳</div>
-
-    <div id="results"></div>
-
-    <div id="detailsArea"></div>
+    <div id="details"></div>
 </div>
 
 <script>
-    const GAS_URL = "رابط_نشر_جوجل_سكريبت_الخاص_بك_هنا";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzfTqKJqm4fwp-LfYBhBe9vJOPSVKT_oAUy0gDrjet3aSYrg9Sz5OWVhXhD1qllyq5y/exec";
 
-    async function performSearch() {
-        const query = document.getElementById('searchInput').value;
-        const type = document.getElementById('searchType').value;
-        if(!query) return;
+    async function search() {
+        const val = document.getElementById('val').value;
+        const type = document.getElementById('type').value;
+        if(!val) return;
 
-        showLoader(true);
-        const resp = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "search", queryParam: type, value: query })
-        });
-        const data = await resp.json();
-        showLoader(false);
+        toggleLoader(true);
+        const res = await fetch(`${GAS_URL}?action=search&queryParam=${type}&value=${encodeURIComponent(val)}`);
+        const data = await res.json();
+        toggleLoader(false);
 
-        let html = `<h3>✅ تم العثور على (${data.items.length})</h3>`;
-        data.items.forEach(item => {
-            html += `
-                <div class="card" onclick="loadFullDetails('${item.self.id}')" style="cursor:pointer">
-                    <b>${item.self.displayValue}</b><br>
-                    <small>ID: ${item.self.id}</small>
-                </div>`;
+        let html = '';
+        data.items.forEach(i => {
+            html += `<div class="card" onclick="getDetails('${i.self.id}')" style="cursor:pointer; border-right:4px solid var(--primary)">
+                        <b>${i.self.displayValue}</b><br><small>ID: ${i.self.id}</small>
+                     </div>`;
         });
         document.getElementById('results').innerHTML = html;
     }
 
-    async function loadFullDetails(cId) {
-        showLoader(true);
-        const resp = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "getFullDetails", customerId: cId })
-        });
-        const d = await resp.json();
-        showLoader(false);
+    async function getDetails(id) {
+        toggleLoader(true);
+        const res = await fetch(`${GAS_URL}?action=getFullDetails&customerId=${id}`);
+        const d = await res.json();
+        toggleLoader(false);
 
-        // بناء واجهة التفاصيل الكاملة (نفس كائنات index.html الأصلي)
-        let detailHtml = `
-            <div class="card" style="border-top: 5px solid var(--purple)">
-                <h3 style="margin-top:0">👤 بيانات المشترك</h3>
-                <div class="grid">
-                    <div><b>الاسم:</b> ${d.basic.name}</div>
-                    <div><b>الهاتف:</b> ${d.basic.mobileVisual}</div>
-                    <div><b>الحالة:</b> <span class="status-badge" style="background:${d.optical?.isOntUp ? 'var(--green)' : 'var(--red)'}">
-                        ${d.optical?.isOntUp ? 'متصل' : 'منقطع'}</span></div>
-                    <div><b>الإشارة:</b> ${d.optical?.rxPower || '--'} dBm</div>
+        const statusColor = d.info.status ? 'var(--green)' : 'var(--red)';
+        
+        document.getElementById('details').innerHTML = `
+            <div class="card" style="border-top: 5px solid var(--primary)">
+                <h3>👤 ${d.basic.name}</h3>
+                <div class="grid-info">
+                    <div><b>رقم الهاتف:</b> ${d.basic.mobileVisual}</div>
+                    <div><b>الحالة:</b> <span class="badge" style="background:${statusColor}">${d.info.status ? 'متصل' : 'منقطع'}</span></div>
+                    <div><b>الإشارة:</b> ${d.info.rx || '--'} dBm</div>
+                    <div><b>تاريخ الانتهاء:</b> ${new Date(d.info.expiry).toLocaleDateString('ar-IQ')}</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📉 الاستهلاك</h3>
+                <div class="grid-info">
+                    <div><b>التحميل:</b> ${d.info.down}</div>
+                    <div><b>الرفع:</b> ${d.info.up}</div>
                 </div>
             </div>
 
@@ -97,23 +95,17 @@
                 <h3>💰 سجل الحوالات</h3>
                 <table>
                     <tr><th>التاريخ</th><th>المبلغ</th><th>النوع</th></tr>
-                    ${d.transactions.map(t => `
-                        <tr>
-                            <td>${new Date(t.occuredAt).toLocaleDateString('ar-EG')}</td>
-                            <td>${t.transactionAmount.value} IQD</td>
-                            <td>${t.type}</td>
-                        </tr>
-                    `).join('')}
+                    ${d.transactions.map(t => `<tr>
+                        <td>${new Date(t.occuredAt).toLocaleDateString('ar-IQ')}</td>
+                        <td>${t.transactionAmount.value} IQD</td>
+                        <td>${t.type}</td>
+                    </tr>`).join('')}
                 </table>
             </div>
         `;
-        document.getElementById('detailsArea').innerHTML = detailHtml;
-        window.scrollTo(0, document.getElementById('detailsArea').offsetTop);
     }
 
-    function showLoader(show) {
-        document.getElementById('loader').style.display = show ? 'block' : 'none';
-    }
+    function toggleLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
 </script>
 </body>
 </html>
