@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <title>بوابة FTTH</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f3f4f6; --dark: #1e293b; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .search-box { display: flex; flex-direction: column; gap: 10px; }
+        input, select, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
+        .loader { display: none; text-align: center; margin: 10px; color: var(--primary); }
+        #results { margin-top: 20px; }
+        .result-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .btn-details { background: #e0e7ff; color: #3730a3; text-decoration: none; padding: 5px 10px; border-radius: 5px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align:center">📡 بوابة المشتركين</h2>
+    
+    <div class="search-box">
+        <select id="searchType">
+            <option value="name">البحث بالاسم</option>
+            <option value="phone">البحث بالهاتف</option>
+        </select>
+        <input type="text" id="queryInput" placeholder="اكتب هنا للبحث...">
+        <button onclick="handleSearch()">بحث الآن</button>
+    </div>
+
+    <div id="loader" class="loader">جاري جلب البيانات... ⏳</div>
+    <div id="results"></div>
+</div>
+
+<script src="app.js"></script>
+<script>
+    // لتسجيل خدمة PWA ليعمل بدون إنترنت جزئياً
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+</script>
+</body>
+</html>
