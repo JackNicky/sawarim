@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwSEvFOH0yAFHu2xnJvaMhrrEzV5E7asQnj1iQ1jJPRS5GNjpP7rvcqRFFBr5kZ6tAR/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx6lFRLW-r9m8aCWfZRRHHHUnobGhFjPvVWsnM-eVurRUPXhwQyp0FEDNG8YBkOn_M/exec";
 
 async function searchCustomer() {
     const queryValue = document.getElementById('queryInput').value;
@@ -25,4 +25,5 @@ async function searchCustomer() {
     console.log(results); // هنا ستعرض النتائج في الجداول كما في تصميمك
 
 }
+
 
