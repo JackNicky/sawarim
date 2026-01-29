@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzfTqKJqm4fwp-LfYBhBe9vJOPSVKT_oAUy0gDrjet3aSYrg9Sz5OWVhXhD1qllyq5y/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz_JuIcosMUI7IQfuRVBcQJqEzhn4H7dD1CLOZaFfiZTOnfJr2nILHPoVBUDnionRlV/exec";
 
 async function searchCustomer() {
     const queryValue = document.getElementById('queryInput').value;
@@ -23,4 +23,5 @@ async function searchCustomer() {
     });
     const results = await searchResponse.json();
     console.log(results); // هنا ستعرض النتائج في الجداول كما في تصميمك
+
 }
