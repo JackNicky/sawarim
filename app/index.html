@@ -3,86 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة المشتركين</title>
+    <title>إدارة FTTH</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; text-align: right; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --green: #10b981; --red: #ef4444; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .search-row { display: flex; gap: 8px; }
+        .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
         input, select, button { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
         input { flex: 1; }
         button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
-        #loader { display: none; text-align: center; padding: 15px; color: var(--primary); }
-        .result-item { padding: 10px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .badge { padding: 4px 12px; border-radius: 20px; color: white; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th { background: #f1f5f9; padding: 8px; text-align: right; }
+        td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+        #loader { display: none; text-align: center; padding: 20px; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div class="search-row">
-        <select id="searchType"><option value="name">الاسم</option><option value="phone">الهاتف</option></select>
-        <input type="text" id="searchValue" placeholder="اكتب للبحث...">
-        <button onclick="startSearch()">بحث</button>
+    <div class="search-box">
+        <select id="st"><option value="name">الاسم</option><option value="phone">الهاتف</option></select>
+        <input type="text" id="sv" placeholder="ابحث هنا...">
+        <button onclick="doSearch()">بحث</button>
     </div>
-    <div id="loader">جاري جلب البيانات من السيرفر... ⏳</div>
+    <div id="loader">جاري الاتصال بالسيرفر... ⏳</div>
     <div id="results"></div>
 </div>
 
 <div id="details"></div>
 
 <script>
-    // ضع رابط الـ Deployment الجديد هنا
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzfTqKJqm4fwp-LfYBhBe9vJOPSVKT_oAUy0gDrjet3aSYrg9Sz5OWVhXhD1qllyq5y/exec";
 
-    async function startSearch() {
-        const val = document.getElementById('searchValue').value;
-        const type = document.getElementById('searchType').value;
-        if(!val) return;
+    async function doSearch() {
+        const v = document.getElementById('sv').value;
+        const t = document.getElementById('st').value;
+        if(!v) return;
 
         document.getElementById('loader').style.display = "block";
-        document.getElementById('results').innerHTML = "";
-
-        // استخدام GET بدلاً من POST لتجنب خطأ 405
-        const finalUrl = `${GAS_URL}?action=search&queryParam=${type}&value=${encodeURIComponent(val)}`;
-
-        try {
-            const resp = await fetch(finalUrl);
-            const data = await resp.json();
-            document.getElementById('loader').style.display = "none";
-
-            let html = '';
-            data.items.forEach(item => {
-                html += `<div class="result-item" onclick="fetchFullDetails('${item.self.id}')">
-                            <b>${item.self.displayValue}</b><br><small>ID: ${item.self.id}</small>
-                         </div>`;
-            });
-            document.getElementById('results').innerHTML = html || "لا توجد نتائج";
-        } catch (error) {
-            document.getElementById('loader').style.display = "none";
-            alert("خطأ في الاتصال: تأكد من نشر السكريبت كـ Anyone");
-            console.error(error);
-        }
-    }
-
-    async function fetchFullDetails(id) {
-        document.getElementById('loader').style.display = "block";
-        const detailUrl = `${GAS_URL}?action=getFullDetails&customerId=${id}`;
+        const url = `${GAS_URL}?action=search&queryParam=${t}&value=${encodeURIComponent(v)}`;
         
         try {
-            const resp = await fetch(detailUrl);
-            const d = await resp.json();
+            const r = await fetch(url);
+            const d = await r.json();
             document.getElementById('loader').style.display = "none";
 
-            document.getElementById('details').innerHTML = `
-                <div class="card">
-                    <h3>👤 معلومات المشترك</h3>
-                    <p>الاسم: ${d.basic.primaryContact.self.displayValue}</p>
-                    <p>رقم الهاتف: ${d.basic.primaryContact.mobileVisual}</p>
-                    <hr>
-                    <h4>💰 الحوالات الأخيرة</h4>
-                    ${d.transactions.map(t => `<div>${t.transactionAmount.value} IQD - ${t.type}</div>`).join('')}
-                </div>`;
-        } catch (e) { alert("فشل جلب التفاصيل"); }
+            let h = '';
+            d.items.forEach(i => {
+                h += `<div class="card" onclick="getMore('${i.self.id}')" style="cursor:pointer; border-right:4px solid var(--primary)">
+                        <b>${i.self.displayValue}</b><br><small>ID: ${i.self.id}</small>
+                     </div>`;
+            });
+            document.getElementById('results').innerHTML = h || "لا توجد نتائج";
+        } catch(e) { alert("خطأ في السيرفر: تأكد من إعدادات النشر"); document.getElementById('loader').style.display = "none"; }
+    }
+
+    async function getMore(id) {
+        document.getElementById('loader').style.display = "block";
+        const r = await fetch(`${GAS_URL}?action=getFullDetails&customerId=${id}`);
+        const d = await r.json();
+        document.getElementById('loader').style.display = "none";
+
+        const i = d.info;
+        document.getElementById('details').innerHTML = `
+            <div class="card">
+                <h3>👤 ${d.basic.primaryContact.self.displayValue}</h3>
+                <div class="grid">
+                    <div><b>الحالة:</b> <span class="badge" style="background:${i.status==='Up'?'var(--green)':'var(--red)'}">${i.status==='Up'?'متصل':'منقطع'}</span></div>
+                    <div><b>الإشارة:</b> ${i.rx || '--'} dBm</div>
+                    <div><b>تاريخ الانتهاء:</b> ${new Date(i.expiry).toLocaleDateString('ar-IQ')}</div>
+                    <div><b>IP:</b> ${i.ip || '--'}</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>📉 الاستهلاك</h3>
+                <div class="grid">
+                    <div><b>التحميل:</b> ${i.down}</div>
+                    <div><b>الرفع:</b> ${i.up}</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>💰 الحوالات</h3>
+                <table>
+                    <tr><th>التاريخ</th><th>المبلغ</th></tr>
+                    ${d.transactions.map(t => `<tr><td>${new Date(t.occuredAt).toLocaleDateString('ar-IQ')}</td><td>${t.transactionAmount.value} IQD</td></tr>`).join('')}
+                </table>
+            </div>`;
     }
 </script>
 </body>
