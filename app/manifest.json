@@ -1,15 +1,9 @@
 {
-  "name": "FTTH Pro Manager",
-  "short_name": "FTTH Pro",
+  "name": "FTTH Management",
+  "short_name": "FTTH",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f3f4f6",
+  "background_color": "#f8fafc",
   "theme_color": "#2563eb",
-  "icons": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/1011/1011322.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2092/2092663.png", "sizes": "512x512", "type": "image/png" }]
 }
