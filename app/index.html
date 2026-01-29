@@ -3,22 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FTTH Manager Pro</title>
+    <title>نظام إدارة المشتركين</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --green: #10b981; --red: #ef4444; --dark: #0f172a; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--dark); }
-        .container { max-width: 700px; margin: auto; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --green: #10b981; --red: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; text-align: right; }
+        .container { max-width: 600px; margin: auto; }
         .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
-        select, input, button { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; }
+        .search-row { display: flex; gap: 8px; margin-bottom: 15px; }
+        input, select, button { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
         input { flex: 1; }
         button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
-        .badge { padding: 4px 12px; border-radius: 20px; color: white; font-size: 12px; }
-        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th { background: #f1f5f9; padding: 10px; text-align: right; }
-        td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-        .loader { display: none; text-align: center; font-weight: bold; padding: 20px; color: var(--primary); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .label { color: #64748b; font-size: 12px; }
+        .val { font-weight: bold; display: block; }
+        .status-up { color: var(--green); }
+        .status-down { color: var(--red); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+        th { background: #f1f5f9; padding: 8px; }
+        td { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+        #loader { display: none; color: var(--primary); text-align: center; padding: 10px; }
     </style>
 </head>
 <body>
@@ -28,14 +31,11 @@
 
     <div class="card">
         <div class="search-row">
-            <select id="type">
-                <option value="name">الاسم</option>
-                <option value="phone">الهاتف</option>
-            </select>
+            <select id="type"><option value="name">الاسم</option><option value="phone">الهاتف</option></select>
             <input type="text" id="val" placeholder="ابحث هنا...">
-            <button onclick="search()">بحث</button>
+            <button onclick="runSearch()">بحث</button>
         </div>
-        <div id="loader" class="loader">جاري جلب البيانات... 🔄</div>
+        <div id="loader">جاري جلب البيانات... ⏳</div>
         <div id="results"></div>
     </div>
 
@@ -45,54 +45,62 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzfTqKJqm4fwp-LfYBhBe9vJOPSVKT_oAUy0gDrjet3aSYrg9Sz5OWVhXhD1qllyq5y/exec";
 
-    async function search() {
-        const val = document.getElementById('val').value;
-        const type = document.getElementById('type').value;
-        if(!val) return;
+    async function runSearch() {
+        const v = document.getElementById('val').value;
+        const t = document.getElementById('type').value;
+        if(!v) return;
 
-        toggleLoader(true);
-        const res = await fetch(`${GAS_URL}?action=search&queryParam=${type}&value=${encodeURIComponent(val)}`);
-        const data = await res.json();
-        toggleLoader(false);
+        showLoader(true);
+        const url = `${GAS_URL}?action=search&queryParam=${t}&value=${encodeURIComponent(v)}`;
+        
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            showLoader(false);
 
-        let html = '';
-        data.items.forEach(i => {
-            html += `<div class="card" onclick="getDetails('${i.self.id}')" style="cursor:pointer; border-right:4px solid var(--primary)">
-                        <b>${i.self.displayValue}</b><br><small>ID: ${i.self.id}</small>
-                     </div>`;
-        });
-        document.getElementById('results').innerHTML = html;
+            let html = '';
+            data.items.forEach(i => {
+                html += `<div class="card" onclick="viewDetails('${i.self.id}')" style="cursor:pointer; border-right:4px solid var(--primary)">
+                            <b>${i.self.displayValue}</b><br><small>ID: ${i.self.id}</small>
+                         </div>`;
+            });
+            document.getElementById('results').innerHTML = html;
+        } catch(e) { alert("خطأ في الاتصال بالسيرفر"); showLoader(false); }
     }
 
-    async function getDetails(id) {
-        toggleLoader(true);
-        const res = await fetch(`${GAS_URL}?action=getFullDetails&customerId=${id}`);
+    async function viewDetails(id) {
+        showLoader(true);
+        const url = `${GAS_URL}?action=getFullDetails&customerId=${id}`;
+        const res = await fetch(url);
         const d = await res.json();
-        toggleLoader(false);
+        showLoader(false);
 
-        const statusColor = d.info.status ? 'var(--green)' : 'var(--red)';
-        
+        const info = d.info;
+        const isUp = info.status === "Up";
+
         document.getElementById('details').innerHTML = `
-            <div class="card" style="border-top: 5px solid var(--primary)">
-                <h3>👤 ${d.basic.name}</h3>
-                <div class="grid-info">
-                    <div><b>رقم الهاتف:</b> ${d.basic.mobileVisual}</div>
-                    <div><b>الحالة:</b> <span class="badge" style="background:${statusColor}">${d.info.status ? 'متصل' : 'منقطع'}</span></div>
-                    <div><b>الإشارة:</b> ${d.info.rx || '--'} dBm</div>
-                    <div><b>تاريخ الانتهاء:</b> ${new Date(d.info.expiry).toLocaleDateString('ar-IQ')}</div>
+            <div class="card">
+                <h3>👤 معلومات المشترك</h3>
+                <div class="grid">
+                    <div><span class="label">الاسم</span><span class="val">${d.basic.primaryContact.self.displayValue}</span></div>
+                    <div><span class="label">الحالة</span><span class="val ${isUp ? 'status-up' : 'status-down'}">${isUp ? '● متصل' : '○ منقطع'}</span></div>
+                    <div><span class="label">إشارة الـ RX</span><span class="val" dir="ltr">${info.rx || '--'} dBm</span></div>
+                    <div><span class="label">الباقة</span><span class="val">${info.plan || '--'}</span></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3>📉 الاستهلاك</h3>
-                <div class="grid-info">
-                    <div><b>التحميل:</b> ${d.info.down}</div>
-                    <div><b>الرفع:</b> ${d.info.up}</div>
+                <h3>📊 الاستهلاك والجهاز</h3>
+                <div class="grid">
+                    <div><span class="label">تحميل</span><span class="val">${info.down || '0'}</span></div>
+                    <div><span class="label">رفع</span><span class="val">${info.up || '0'}</span></div>
+                    <div><span class="label">IP</span><span class="val">${info.ip || '--'}</span></div>
+                    <div><span class="label">MAC</span><span class="val">${info.mac || '--'}</span></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3>💰 سجل الحوالات</h3>
+                <h3>💰 الحوالات المالية</h3>
                 <table>
                     <tr><th>التاريخ</th><th>المبلغ</th><th>النوع</th></tr>
                     ${d.transactions.map(t => `<tr>
@@ -105,7 +113,7 @@
         `;
     }
 
-    function toggleLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
+    function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
 </script>
 </body>
 </html>
