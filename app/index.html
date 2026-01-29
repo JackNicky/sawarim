@@ -4,43 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
-    <title>بوابة FTTH</title>
+    <title>بوابة FTTH الاحترافية</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f3f4f6; --dark: #1e293b; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .search-box { display: flex; flex-direction: column; gap: 10px; }
-        input, select, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
-        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
-        .loader { display: none; text-align: center; margin: 10px; color: var(--primary); }
-        #results { margin-top: 20px; }
-        .result-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .btn-details { background: #e0e7ff; color: #3730a3; text-decoration: none; padding: 5px 10px; border-radius: 5px; font-size: 0.9em; }
+        :root { --primary: #2563eb; --bg: #f3f4f6; --green: #10b981; --red: #ef4444; --dark: #1e293b; --purple: #7c3aed; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .search-box { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        select, input, button { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; }
+        input { flex: 1; min-width: 150px; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
+        .card { border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 15px; background: #fff; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; color: white; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: right; }
+        .loader { display: none; text-align: center; padding: 20px; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align:center">📡 بوابة المشتركين</h2>
-    
+    <h1>📡 نظام إدارة المشتركين</h1>
+
     <div class="search-box">
         <select id="searchType">
-            <option value="name">البحث بالاسم</option>
-            <option value="phone">البحث بالهاتف</option>
+            <option value="name">الاسم</option>
+            <option value="phone">الهاتف</option>
+            <option value="id">المعرف</option>
+            <option value="ont">السيريال</option>
         </select>
-        <input type="text" id="queryInput" placeholder="اكتب هنا للبحث...">
-        <button onclick="handleSearch()">بحث الآن</button>
+        <input type="text" id="searchInput" placeholder="ابحث هنا...">
+        <button onclick="performSearch()">بحث</button>
     </div>
 
-    <div id="loader" class="loader">جاري جلب البيانات... ⏳</div>
+    <div id="loader" class="loader">جاري معالجة البيانات... ⏳</div>
+
     <div id="results"></div>
+
+    <div id="detailsArea"></div>
 </div>
 
-<script src="app.js"></script>
 <script>
-    // لتسجيل خدمة PWA ليعمل بدون إنترنت جزئياً
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+    const GAS_URL = "رابط_نشر_جوجل_سكريبت_الخاص_بك_هنا";
+
+    async function performSearch() {
+        const query = document.getElementById('searchInput').value;
+        const type = document.getElementById('searchType').value;
+        if(!query) return;
+
+        showLoader(true);
+        const resp = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "search", queryParam: type, value: query })
+        });
+        const data = await resp.json();
+        showLoader(false);
+
+        let html = `<h3>✅ تم العثور على (${data.items.length})</h3>`;
+        data.items.forEach(item => {
+            html += `
+                <div class="card" onclick="loadFullDetails('${item.self.id}')" style="cursor:pointer">
+                    <b>${item.self.displayValue}</b><br>
+                    <small>ID: ${item.self.id}</small>
+                </div>`;
+        });
+        document.getElementById('results').innerHTML = html;
+    }
+
+    async function loadFullDetails(cId) {
+        showLoader(true);
+        const resp = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "getFullDetails", customerId: cId })
+        });
+        const d = await resp.json();
+        showLoader(false);
+
+        // بناء واجهة التفاصيل الكاملة (نفس كائنات index.html الأصلي)
+        let detailHtml = `
+            <div class="card" style="border-top: 5px solid var(--purple)">
+                <h3 style="margin-top:0">👤 بيانات المشترك</h3>
+                <div class="grid">
+                    <div><b>الاسم:</b> ${d.basic.name}</div>
+                    <div><b>الهاتف:</b> ${d.basic.mobileVisual}</div>
+                    <div><b>الحالة:</b> <span class="status-badge" style="background:${d.optical?.isOntUp ? 'var(--green)' : 'var(--red)'}">
+                        ${d.optical?.isOntUp ? 'متصل' : 'منقطع'}</span></div>
+                    <div><b>الإشارة:</b> ${d.optical?.rxPower || '--'} dBm</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>💰 سجل الحوالات</h3>
+                <table>
+                    <tr><th>التاريخ</th><th>المبلغ</th><th>النوع</th></tr>
+                    ${d.transactions.map(t => `
+                        <tr>
+                            <td>${new Date(t.occuredAt).toLocaleDateString('ar-EG')}</td>
+                            <td>${t.transactionAmount.value} IQD</td>
+                            <td>${t.type}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            </div>
+        `;
+        document.getElementById('detailsArea').innerHTML = detailHtml;
+        window.scrollTo(0, document.getElementById('detailsArea').offsetTop);
+    }
+
+    function showLoader(show) {
+        document.getElementById('loader').style.display = show ? 'block' : 'none';
     }
 </script>
 </body>
