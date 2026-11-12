@@ -473,25 +473,31 @@
     </div>
 
 
-   <script>
+<script>
     // --- رابط الـ Worker الخاص بك ---
-    const WORKER_URL = 'https://floral-night-7ee7.mntderamad2000.workers.dev/';
+    const WORKER_URL = 'https://floral-net-7ee7.mntderamad2000.workers.dev/';
 
     const mainContent = document.getElementById('main-content');
     const resultsArea = document.getElementById('results-area');
     
-    // استبدال حقل Algolia القديم بحقل البحث العادي في ملفك
+    // إعداد حقل البحث العادي
     const searchboxWrapper = document.getElementById('searchbox-wrapper');
-    searchboxWrapper.innerHTML = `
-        <input type="text" id="search-input" class="w-full ais-SearchBox-input" placeholder="ابحث في محتوى جميع الكتب...">
-        <svg id="center-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-    `;
+    if (searchboxWrapper) {
+        searchboxWrapper.innerHTML = `
+            <input type="text" id="search-input" class="w-full ais-SearchBox-input" placeholder="ابحث في محتوى جميع الكتب...">
+            <svg id="center-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        `;
+    }
 
     const searchInput = document.getElementById('search-input');
     const statsContainer = document.getElementById('stats');
+    
+    // تعريف العناصر بدقة لضمان عدم ظهور خطأ غير معرف
     const infiniteHitsContainer = document.getElementById('infinite-hits');
+    const hitsList = infiniteHitsContainer; // ربط hitsList بـ infiniteHits ليتوافق مع الاستخدام
+    
     const loadMoreContainer = document.getElementById('load-more');
     const searchOptionsContainer = document.getElementById('search-options');
     const suggestedSearchesContainer = document.getElementById('suggested-searches-container');
@@ -528,15 +534,15 @@
         }
 
         setDisplayMode('search');
-        algoliaResultsContainer.style.display = 'block';
-        curatedResultsContainer.style.display = 'none';
-        statsContainer.style.display = 'block';
-        searchOptionsContainer.style.display = 'flex';
-        infiniteHitsContainer.style.display = 'grid';
-        loadMoreContainer.style.display = 'block';
+        if (algoliaResultsContainer) algoliaResultsContainer.style.display = 'block';
+        if (curatedResultsContainer) curatedResultsContainer.style.display = 'none';
+        if (statsContainer) statsContainer.style.display = 'block';
+        if (searchOptionsContainer) searchOptionsContainer.style.display = 'flex';
+        if (infiniteHitsContainer) infiniteHitsContainer.style.display = 'grid';
+        if (loadMoreContainer) loadMoreContainer.style.display = 'block';
 
-        statsContainer.textContent = 'جاري البحث...';
-        infiniteHitsContainer.innerHTML = '<div class="text-center text-gray-400 py-6">جاري جلب النتائج من السيرفر...</div>';
+        if (statsContainer) statsContainer.textContent = 'جاري البحث...';
+        if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = '<div class="text-center text-gray-400 py-6">جاري جلب النتائج من السيرفر...</div>';
 
         const startTime = performance.now();
 
@@ -548,25 +554,26 @@
             const duration = Math.round(endTime - startTime);
 
             if (data.error) {
-                statsContainer.textContent = 'حدث خطأ أثناء البحث.';
-                infiniteHitsContainer.innerHTML = `<p class="text-center text-red-400 p-4">${data.error}</p>`;
+                if (statsContainer) statsContainer.textContent = 'حدث خطأ أثناء البحث.';
+                if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = `<p class="text-center text-red-400 p-4">${data.error}</p>`;
                 return;
             }
 
-            statsContainer.textContent = `تم العثور على ${data.count} نتيجة في ${duration}ms`;
+            if (statsContainer) statsContainer.textContent = `تم العثور على ${data.count} نتيجة في ${duration}ms`;
 
-            if (data.results.length === 0) {
-                infiniteHitsContainer.innerHTML = `
-                    <div class="text-center text-gray-400 text-lg p-4 bg-gray-800 rounded-lg shadow-inner col-span-full">
-                        <p>لم يتم العثور على نتائج للبحث عن: <strong>${query}</strong></p>
-                    </div>
-                `;
+            if (!data.results || data.results.length === 0) {
+                if (infiniteHitsContainer) {
+                    infiniteHitsContainer.innerHTML = `
+                        <div class="text-center text-gray-400 text-lg p-4 bg-gray-800 rounded-lg shadow-inner col-span-full">
+                            <p>لم يتم العثور على نتائج للبحث عن: <strong>${query}</strong></p>
+                        </div>
+                    `;
+                }
                 return;
             }
 
-            infiniteHitsContainer.innerHTML = '';
+            if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = '';
 
-            // عرض النتائج القادمة من قاعدة البيانات D1 مع تصحيح الروابط للموسوعات
             data.results.forEach(item => {
                 let bookId = item.book_id || item.bookId || 1;
                 const volumeNum = item.volume_number || item.volumeNumber || 1;
@@ -574,124 +581,129 @@
                 const bookTitle = item.title || item.volumeTitle || 'كتاب تراثي';
                 const snippet = item.snippet_text || item.content?.substring(0, 150) + '...' || '';
 
-                // قاعدة تصحيح ذكية لموسوعة بحار الأنوار:
-                // بما أن مجلدات بحار الأنوار (من 1 إلى 110) مرتبطة بالمعرف 36 في القارئ لديك
+                // قاعدة تصحيح ذكية لموسوعة بحار الأنوار لتجنب الروابط الفارغة
                 if (bookTitle.includes('بحار الأنوار') || (volumeNum >= 1 && volumeNum <= 110 && (bookId >= 36 && bookId <= 39))) {
                     bookId = 36;
                 }
 
                 const url = `index.html#/book/${bookId}/volume/${volumeNum}/page/${pageNum}?highlight=${encodeURIComponent(query)}`;
 
-                const card = document.createElement('div');
-                card.className = 'result-item';
+                const card = document.createElement('a');
+                card.href = url;
+                card.target = '_blank';
+                card.className = 'result-link ais-InfiniteHits-item';
                 card.innerHTML = `
-                    <a href="${url}" target="_blank" class="result-link">
-                        <div class="result-title">${bookTitle}</div>
-                        <div class="result-location">الجزء ${volumeNum} - صفحة ${pageNum}</div>
-                        <div class="result-snippet">${snippet}</div>
-                    </a>
+                    <div class="result-title">${bookTitle}</div>
+                    <div class="result-location">الجزء ${volumeNum} - صفحة ${pageNum}</div>
+                    <div class="result-snippet">${snippet}</div>
                 `;
-                hitsList.appendChild(card);
+                if (infiniteHitsContainer) infiniteHitsContainer.appendChild(card);
             });
 
         } catch (err) {
-            statsContainer.textContent = 'خطأ في الاتصال بالخادم.';
-            infiniteHitsContainer.innerHTML = '<p class="text-center text-red-400 p-4">فشل الاتصال بخدمة البحث (تأكد من تفعيل CORS في الـ Worker).</p>';
+            if (statsContainer) statsContainer.textContent = 'خطأ في الاتصال بالخادم.';
+            if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = '<p class="text-center text-red-400 p-4">فشل الاتصال بخدمة البحث (تأكد من تفعيل CORS في الـ Worker).</p>';
             console.error(err);
         }
     }
 
     // الاستماع للكتابة في مربع البحث
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value;
-        clearTimeout(searchTimeout);
-        
-        if (!query.trim()) {
-            setDisplayMode('center');
-            hideAllResults();
-            return;
-        }
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            clearTimeout(searchTimeout);
+            
+            if (!query.trim()) {
+                setDisplayMode('center');
+                hideAllResults();
+                return;
+            }
 
-        searchTimeout = setTimeout(() => {
-            performSearch(query);
-        }, 300);
-    });
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300);
+        });
+    }
 
     function showCuratedResults(item) {
         setDisplayMode('search');
-        algoliaResultsContainer.style.display = 'none';
-        curatedResultsContainer.style.display = 'grid';
-        curatedResultsContainer.innerHTML = '';
+        if (algoliaResultsContainer) algoliaResultsContainer.style.display = 'none';
+        if (curatedResultsContainer) {
+            curatedResultsContainer.style.display = 'grid';
+            curatedResultsContainer.innerHTML = '';
 
-        const header = document.createElement('div');
-        header.className = 'flex justify-between items-center mb-2 px-1 col-span-full';
-        
-        const title = document.createElement('h2');
-        title.className = 'text-xl font-bold text-yellow-500';
-        title.textContent = `نتائج مقترحة لـ: ${item.title}`;
-        
-        const backButton = document.createElement('button');
-        backButton.className = 'text-gray-400 hover:text-yellow-500 transition-colors';
-        backButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
-        
-        const handleBackButtonClick = () => {
-            hideAllResults();
-            setDisplayMode('center');
-            searchInput.value = '';
-        };
-        
-        backButton.addEventListener('click', handleBackButtonClick);
-        backButton.addEventListener('touchend', handleBackButtonClick);
-
-        header.appendChild(title);
-        header.appendChild(backButton);
-        curatedResultsContainer.appendChild(header);
-
-        item.links.forEach(link => {
-            const url = `index.html#/book/${link.bookId}/volume/${link.volumeNumber}/page/${link.pageNumber}?highlight=${encodeURIComponent(link.highlightText)}`;
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center mb-2 px-1 col-span-full';
             
-            const card = document.createElement('a');
-            card.href = url;
-            card.target = '_blank';
-            card.className = 'result-link ais-InfiniteHits-item';
+            const title = document.createElement('h2');
+            title.className = 'text-xl font-bold text-yellow-500';
+            title.textContent = `نتائج مقترحة لـ: ${item.title}`;
             
-            card.innerHTML = `
-                <div class="result-title">${item.title}</div>
-                <div class="result-location">${link.subtitle}</div>
-                <div class="result-snippet">...${link.highlightText.substring(0, 100)}...</div>
-            `;
-            curatedResultsContainer.appendChild(card);
-        });
+            const backButton = document.createElement('button');
+            backButton.className = 'text-gray-400 hover:text-yellow-500 transition-colors';
+            backButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+            
+            const handleBackButtonClick = () => {
+                hideAllResults();
+                setDisplayMode('center');
+                if (searchInput) searchInput.value = '';
+            };
+            
+            backButton.addEventListener('click', handleBackButtonClick);
+            backButton.addEventListener('touchend', handleBackButtonClick);
+
+            header.appendChild(title);
+            header.appendChild(backButton);
+            curatedResultsContainer.appendChild(header);
+
+            item.links.forEach(link => {
+                const url = `index.html#/book/${link.bookId}/volume/${link.volumeNumber}/page/${link.pageNumber}?highlight=${encodeURIComponent(link.highlightText)}`;
+                
+                const card = document.createElement('a');
+                card.href = url;
+                card.target = '_blank';
+                card.className = 'result-link ais-InfiniteHits-item';
+                
+                card.innerHTML = `
+                    <div class="result-title">${item.title}</div>
+                    <div class="result-location">${link.subtitle}</div>
+                    <div class="result-snippet">...${link.highlightText.substring(0, 100)}...</div>
+                `;
+                curatedResultsContainer.appendChild(card);
+            });
+        }
     }
 
     function hideAllResults() {
-        algoliaResultsContainer.style.display = 'none';
-        curatedResultsContainer.style.display = 'none';
+        if (algoliaResultsContainer) algoliaResultsContainer.style.display = 'none';
+        if (curatedResultsContainer) curatedResultsContainer.style.display = 'none';
     }
     
     function openModal() {
-        modalList.innerHTML = '';
-        allSuggestedItems.forEach(item => {
-            const button = document.createElement('button');
-            button.className = 'modal-list-item';
-            button.textContent = item.title;
-            button.onclick = () => {
-                closeModal();
-                showCuratedResults(item);
-            };
-            modalList.appendChild(button);
-        });
-        modalOverlay.classList.add('visible');
-        modalContainer.classList.add('visible');
+        if (modalList) {
+            modalList.innerHTML = '';
+            allSuggestedItems.forEach(item => {
+                const button = document.createElement('button');
+                button.className = 'modal-list-item';
+                button.textContent = item.title;
+                button.onclick = () => {
+                    closeModal();
+                    showCuratedResults(item);
+                };
+                modalList.appendChild(button);
+            });
+        }
+        if (modalOverlay) modalOverlay.classList.add('visible');
+        if (modalContainer) modalContainer.classList.add('visible');
     }
     
     function closeModal() {
-        modalOverlay.classList.remove('visible');
-        modalContainer.classList.remove('visible');
+        if (modalOverlay) modalOverlay.classList.remove('visible');
+        if (modalContainer) modalContainer.classList.remove('visible');
     }
     
-    modalCloseBtn.onclick = closeModal;
-    modalOverlay.onclick = closeModal;
+    if (modalCloseBtn) modalCloseBtn.onclick = closeModal;
+    if (modalOverlay) modalOverlay.onclick = closeModal;
 
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
@@ -702,6 +714,7 @@
     }
 
     async function loadSuggestedSearches() {
+        if (!suggestedSearchesContainer) return;
         suggestedSearchesContainer.innerHTML = `<p class="text-gray-500 text-sm animate-pulse">جاري تحميل الاقتراحات...</p>`;
         try {
             const response = await fetch('data/search.json');
@@ -744,7 +757,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const queryFromUrl = urlParams.get('q') || urlParams.get('query');
-        if (queryFromUrl) {
+        if (queryFromUrl && searchInput) {
             searchInput.value = queryFromUrl;
             performSearch(queryFromUrl);
         }
