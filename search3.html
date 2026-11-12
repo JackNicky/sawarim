@@ -566,25 +566,32 @@
 
             infiniteHitsContainer.innerHTML = '';
 
+            // عرض النتائج القادمة من قاعدة البيانات D1 مع تصحيح الروابط للموسوعات
             data.results.forEach(item => {
-                const bookId = item.book_id || item.bookId || 1;
+                let bookId = item.book_id || item.bookId || 1;
                 const volumeNum = item.volume_number || item.volumeNumber || 1;
                 const pageNum = item.page_number || item.pageNumber || 1;
                 const bookTitle = item.title || item.volumeTitle || 'كتاب تراثي';
                 const snippet = item.snippet_text || item.content?.substring(0, 150) + '...' || '';
 
+                // قاعدة تصحيح ذكية لموسوعة بحار الأنوار:
+                // بما أن مجلدات بحار الأنوار (من 1 إلى 110) مرتبطة بالمعرف 36 في القارئ لديك
+                if (bookTitle.includes('بحار الأنوار') || (volumeNum >= 1 && volumeNum <= 110 && (bookId >= 36 && bookId <= 39))) {
+                    bookId = 36;
+                }
+
                 const url = `index.html#/book/${bookId}/volume/${volumeNum}/page/${pageNum}?highlight=${encodeURIComponent(query)}`;
 
-                const card = document.createElement('a');
-                card.href = url;
-                card.target = '_blank';
-                card.className = 'result-link ais-InfiniteHits-item';
+                const card = document.createElement('div');
+                card.className = 'result-item';
                 card.innerHTML = `
-                    <div class="result-title">${bookTitle}</div>
-                    <div class="result-location">الجزء ${volumeNum} - صفحة ${pageNum}</div>
-                    <div class="result-snippet">${snippet}</div>
+                    <a href="${url}" target="_blank" class="result-link">
+                        <div class="result-title">${bookTitle}</div>
+                        <div class="result-location">الجزء ${volumeNum} - صفحة ${pageNum}</div>
+                        <div class="result-snippet">${snippet}</div>
+                    </a>
                 `;
-                infiniteHitsContainer.appendChild(card);
+                hitsList.appendChild(card);
             });
 
         } catch (err) {
