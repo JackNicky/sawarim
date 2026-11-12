@@ -493,11 +493,8 @@
 
     const searchInput = document.getElementById('search-input');
     const statsContainer = document.getElementById('stats');
-    
-    // تعريف العناصر بدقة لضمان عدم ظهور خطأ غير معرف
     const infiniteHitsContainer = document.getElementById('infinite-hits');
-    const hitsList = infiniteHitsContainer; // ربط hitsList بـ infiniteHits ليتوافق مع الاستخدام
-    
+    const hitsList = infiniteHitsContainer;
     const loadMoreContainer = document.getElementById('load-more');
     const searchOptionsContainer = document.getElementById('search-options');
     const suggestedSearchesContainer = document.getElementById('suggested-searches-container');
@@ -523,6 +520,43 @@
             mainContent.classList.add('search-mode');
             resultsArea.style.display = 'block';
         }
+    }
+
+    // دالة ذكية لاستخراج السطر أو المقطع الذي يحتوي على كلمة البحث بدقة من نص الصفحة
+    function extractSnippetAndHighlight(fullText, query) {
+        if (!fullText) return { snippet: '', highlightWord: query };
+        
+        const queryLower = query.toLowerCase();
+        const textLower = fullText.toLowerCase();
+        const index = textLower.indexOf(queryLower);
+
+        if (index === -1) {
+            // إذا لم يتم العثور عليها حرفياً، نعيد بداية النص
+            return { 
+                snippet: fullText.substring(0, 150) + '...', 
+                highlightWord: query 
+            };
+        }
+
+        // استخراج الكلمة كما وردت في النص الأصلي (للحفاظ على تشكيلها أو حالتها)
+        const highlightWord = fullText.substring(index, index + query.length);
+
+        // اقتطاع مقطع سياقي حول الكلمة (حوالي 60 حرف قبله و 100 حرف بعده)
+        const start = Math.max(0, index - 60);
+        const end = Math.min(fullText.length, index + query.length + 100);
+        
+        let snippet = fullText.substring(start, end);
+        if (start > 0) snippet = '...' + snippet;
+        if (end < fullText.length) snippet = snippet + '...';
+
+        // تمييز الكلمة داخل الـ Snippet بوسم HTML ملون
+        const regex = new RegExp(`(${query})`, 'gi');
+        const formattedSnippet = snippet.replace(regex, '<span class="highlight">$1</span>');
+
+        return {
+            snippet: formattedSnippet,
+            highlightWord: highlightWord
+        };
     }
 
     // دالة البحث عبر الـ Worker API
@@ -579,14 +613,18 @@
                 const volumeNum = item.volume_number || item.volumeNumber || 1;
                 const pageNum = item.page_number || item.pageNumber || 1;
                 const bookTitle = item.title || item.volumeTitle || 'كتاب تراثي';
-                const snippet = item.snippet_text || item.content?.substring(0, 150) + '...' || '';
+                const pageContent = item.content || '';
 
-                // قاعدة تصحيح ذكية لموسوعة بحار الأنوار لتجنب الروابط الفارغة
+                // تصحيح روابط بحار الأنوار تلقائياً
                 if (bookTitle.includes('بحار الأنوار') || (volumeNum >= 1 && volumeNum <= 110 && (bookId >= 36 && bookId <= 39))) {
                     bookId = 36;
                 }
 
-                const url = `index.html#/book/${bookId}/volume/${volumeNum}/page/${pageNum}?highlight=${encodeURIComponent(query)}`;
+                // استخراج المقطع الدقيق الذي توجد فيه الكلمة وتحديد الكلمة للتظليل
+                const { snippet, highlightWord } = extractSnippetAndHighlight(pageContent, query);
+
+                // تمرير الكلمة المستخرجة من النص (highlightWord) إلى الرابط بدلاً من كلمة البحث الخام إذا أردت، أو الاحتفاظ بها
+                const url = `index.html#/book/${bookId}/volume/${volumeNum}/page/${pageNum}?highlight=${encodeURIComponent(highlightWord)}`;
 
                 const card = document.createElement('a');
                 card.href = url;
@@ -602,7 +640,7 @@
 
         } catch (err) {
             if (statsContainer) statsContainer.textContent = 'خطأ في الاتصال بالخادم.';
-            if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = '<p class="text-center text-red-400 p-4">فشل الاتصال بخدمة البحث (تأكد من تفعيل CORS في الـ Worker).</p>';
+            if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = '<p class="text-center text-red-400 p-4">فشل الاتصال بخدمة البحث.</p>';
             console.error(err);
         }
     }
