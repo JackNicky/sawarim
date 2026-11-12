@@ -474,13 +474,11 @@
 
 
 <script>
-    // --- رابط الـ Worker الخاص بك ---
     const WORKER_URL = 'https://floral-night-7ee7.mntderamad2000.workers.dev/';
 
     const mainContent = document.getElementById('main-content');
     const resultsArea = document.getElementById('results-area');
     
-    // إعداد حقل البحث العادي
     const searchboxWrapper = document.getElementById('searchbox-wrapper');
     if (searchboxWrapper) {
         searchboxWrapper.innerHTML = `
@@ -522,26 +520,31 @@
         }
     }
 
-    // دالة ذكية لاستخراج السطر أو المقطع الذي يحتوي على كلمة البحث بدقة من نص الصفحة
+    // دالة لتنظيف النص ومقارنته بغض النظر عن الهمزات والحركات البصرية المشابهة
+    function normalizeArabic(text) {
+        if (!text) return '';
+        return text
+            .replace(/[\u064B-\u0652]/g, '') // إزالة الحركات (التشكيل)
+            .replace(/[إأآا]/g, 'ا توحيد الألفات')
+            .replace(/ة/g, 'ه')
+            .replace(/ى/g, 'ي');
+    }
+
     function extractSnippetAndHighlight(fullText, query) {
         if (!fullText) return { snippet: '', highlightWord: query };
         
-        const queryLower = query.toLowerCase();
-        const textLower = fullText.toLowerCase();
-        const index = textLower.indexOf(queryLower);
+        const normFull = normalizeArabic(fullText);
+        const normQuery = normalizeArabic(query);
+        const index = normFull.indexOf(normQuery);
 
         if (index === -1) {
-            // إذا لم يتم العثور عليها حرفياً، نعيد بداية النص
             return { 
                 snippet: fullText.substring(0, 150) + '...', 
                 highlightWord: query 
             };
         }
 
-        // استخراج الكلمة كما وردت في النص الأصلي (للحفاظ على تشكيلها أو حالتها)
         const highlightWord = fullText.substring(index, index + query.length);
-
-        // اقتطاع مقطع سياقي حول الكلمة (حوالي 60 حرف قبله و 100 حرف بعده)
         const start = Math.max(0, index - 60);
         const end = Math.min(fullText.length, index + query.length + 100);
         
@@ -549,17 +552,12 @@
         if (start > 0) snippet = '...' + snippet;
         if (end < fullText.length) snippet = snippet + '...';
 
-        // تمييز الكلمة داخل الـ Snippet بوسم HTML ملون
-        const regex = new RegExp(`(${query})`, 'gi');
-        const formattedSnippet = snippet.replace(regex, '<span class="highlight">$1</span>');
-
         return {
-            snippet: formattedSnippet,
+            snippet: snippet,
             highlightWord: highlightWord
         };
     }
 
-    // دالة البحث عبر الـ Worker API
     async function performSearch(query) {
         if (!query || query.trim() === '') {
             setDisplayMode('center');
@@ -609,21 +607,25 @@
             if (infiniteHitsContainer) infiniteHitsContainer.innerHTML = '';
 
             data.results.forEach(item => {
-                let bookId = item.book_id || item.bookId || 1;
+                let bookId = item.book_id || item.bookId || 36; // افتراضي بحار الأنوار أو حسب قاعدة البيانات
                 const volumeNum = item.volume_number || item.volumeNumber || 1;
                 const pageNum = item.page_number || item.pageNumber || 1;
-                const bookTitle = item.title || item.volumeTitle || 'كتاب تراثي';
+                
+                // تحديد اسم الكتاب وعنوان الفصل أو الصفحة الحالية بدقة
+                const bookTitle = item.bookTitle || item.title || "بحار الأنوار"; 
+                const chapterTitle = item.chapter || item.volumeTitle || `صفحة ${pageNum}`;
+
+                // دمج اسم الكتاب مع العنوان بالشكل المطلوب: اسم الكتاب - ( العنوان )
+                const fullDisplayTitle = `${bookTitle} - ( ${chapterTitle} )`;
+
                 const pageContent = item.content || '';
 
-                // تصحيح روابط بحار الأنوار تلقائياً
-                if (bookTitle.includes('بحار الأنوار') || (volumeNum >= 1 && volumeNum <= 110 && (bookId >= 36 && bookId <= 39))) {
+                // تصحيح رابط بحار الأنوار تلقائياً
+                if (bookTitle.includes('بحار الأنوار') || (volumeNum >= 1 && volumeNum <= 110)) {
                     bookId = 36;
                 }
 
-                // استخراج المقطع الدقيق الذي توجد فيه الكلمة وتحديد الكلمة للتظليل
                 const { snippet, highlightWord } = extractSnippetAndHighlight(pageContent, query);
-
-                // تمرير الكلمة المستخرجة من النص (highlightWord) إلى الرابط بدلاً من كلمة البحث الخام إذا أردت، أو الاحتفاظ بها
                 const url = `index.html#/book/${bookId}/volume/${volumeNum}/page/${pageNum}?highlight=${encodeURIComponent(highlightWord)}`;
 
                 const card = document.createElement('a');
@@ -631,7 +633,7 @@
                 card.target = '_blank';
                 card.className = 'result-link ais-InfiniteHits-item';
                 card.innerHTML = `
-                    <div class="result-title">${bookTitle}</div>
+                    <div class="result-title">${fullDisplayTitle}</div>
                     <div class="result-location">الجزء ${volumeNum} - صفحة ${pageNum}</div>
                     <div class="result-snippet">${snippet}</div>
                 `;
@@ -645,7 +647,6 @@
         }
     }
 
-    // الاستماع للكتابة في مربع البحث
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value;
@@ -681,14 +682,11 @@
             backButton.className = 'text-gray-400 hover:text-yellow-500 transition-colors';
             backButton.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
             
-            const handleBackButtonClick = () => {
+            backButton.onclick = () => {
                 hideAllResults();
                 setDisplayMode('center');
                 if (searchInput) searchInput.value = '';
             };
-            
-            backButton.addEventListener('click', handleBackButtonClick);
-            backButton.addEventListener('touchend', handleBackButtonClick);
 
             header.appendChild(title);
             header.appendChild(backButton);
@@ -696,12 +694,10 @@
 
             item.links.forEach(link => {
                 const url = `index.html#/book/${link.bookId}/volume/${link.volumeNumber}/page/${link.pageNumber}?highlight=${encodeURIComponent(link.highlightText)}`;
-                
                 const card = document.createElement('a');
                 card.href = url;
                 card.target = '_blank';
                 card.className = 'result-link ais-InfiniteHits-item';
-                
                 card.innerHTML = `
                     <div class="result-title">${item.title}</div>
                     <div class="result-location">${link.subtitle}</div>
@@ -732,7 +728,7 @@
             });
         }
         if (modalOverlay) modalOverlay.classList.add('visible');
-        if (modalContainer) modalContainer.classList.add('visible');
+        if (modalContainer) modalContainer.classLsit.add('visible');
     }
     
     function closeModal() {
@@ -743,62 +739,9 @@
     if (modalCloseBtn) modalCloseBtn.onclick = closeModal;
     if (modalOverlay) modalOverlay.onclick = closeModal;
 
-    function shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    }
-
-    async function loadSuggestedSearches() {
-        if (!suggestedSearchesContainer) return;
-        suggestedSearchesContainer.innerHTML = `<p class="text-gray-500 text-sm animate-pulse">جاري تحميل الاقتراحات...</p>`;
-        try {
-            const response = await fetch('data/search.json');
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            allSuggestedItems = await response.json(); 
-            suggestedSearchesContainer.innerHTML = ''; 
-
-            if (allSuggestedItems && allSuggestedItems.length > 0) {
-                const randomItems = shuffleArray([...allSuggestedItems]).slice(0, 4); 
-                
-                randomItems.forEach((item, index) => {
-                    const button = document.createElement('button');
-                    button.className = 'suggested-item bg-gray-700 text-gray-200 px-4 py-2 rounded-full text-sm font-medium hover:bg-yellow-600 hover:text-gray-900 transition-colors shadow-md';
-                    button.textContent = item.title;
-                    button.style.animationDelay = `${index * 100}ms`;
-                    button.onclick = () => showCuratedResults(item);
-                    suggestedSearchesContainer.appendChild(button);
-                });
-                
-                const moreButton = document.createElement('button');
-                moreButton.className = 'suggested-item bg-gray-800 text-yellow-500 border border-yellow-500 px-4 py-2 rounded-full text-sm font-medium hover:bg-yellow-500 hover:text-gray-900 transition-colors shadow-md';
-                moreButton.textContent = 'أخرى...';
-                moreButton.style.animationDelay = `${randomItems.length * 100}ms`;
-                moreButton.onclick = openModal;
-                suggestedSearchesContainer.appendChild(moreButton);
-            } else {
-                suggestedSearchesContainer.innerHTML = `<p class="text-gray-500 text-sm">لا توجد اقتراحات حالياً.</p>`;
-            }
-        } catch (e) {
-            console.error("Failed to load suggested searches:", e);
-            suggestedSearchesContainer.innerHTML = `<p class="text-red-400 text-sm font-medium">حدث خطأ أثناء تحميل الاقتراحات.</p>`;
-        }
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
-        loadSuggestedSearches();
         setDisplayMode('center');
         hideAllResults();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const queryFromUrl = urlParams.get('q') || urlParams.get('query');
-        if (queryFromUrl && searchInput) {
-            searchInput.value = queryFromUrl;
-            performSearch(queryFromUrl);
-        }
     });
     </script>
 </body>
