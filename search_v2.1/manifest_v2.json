@@ -1,0 +1,365 @@
+{
+  "version": 2,
+  "totalBooks": 40,
+  "totalPages": 142717,
+  "uniqueWords": 427700,
+  "books": [
+    {
+      "id": 1,
+      "title": "القرآن الكريم",
+      "author": " ",
+      "subtitle": "",
+      "pagesCount": 6350,
+      "file": "books/book_1.json"
+    },
+    {
+      "id": 2,
+      "title": "الكافي",
+      "author": "الشيخ الكليني",
+      "subtitle": "معتبر تقريباً عند الامامية",
+      "pagesCount": 4423,
+      "file": "books/book_2.json"
+    },
+    {
+      "id": 3,
+      "title": "نهج البلاغة",
+      "author": "جمع: الشريف الرضي",
+      "subtitle": "خطب، مواعظ، حكم.",
+      "pagesCount": 719,
+      "file": "books/book_3.json"
+    },
+    {
+      "id": 4,
+      "title": "البرهان في تفسير القرآن",
+      "author": "السيد هاشم البحراني",
+      "subtitle": "عقائدي، روائي، تفسيري.",
+      "pagesCount": 4191,
+      "file": "books/book_4.json"
+    },
+    {
+      "id": 5,
+      "title": "تفسير القمي",
+      "author": "علي بن إبراهيم القمي",
+      "subtitle": "عقائدي، روائي، تفسيري.",
+      "pagesCount": 870,
+      "file": "books/book_5.json"
+    },
+    {
+      "id": 6,
+      "title": "كتاب سليم بن قيس الهلالي",
+      "author": "سليم بن قيس الهلالي الكوفي",
+      "subtitle": "أولِي، عقائدي، تاريخي.",
+      "pagesCount": 973,
+      "file": "books/book_6.json"
+    },
+    {
+      "id": 7,
+      "title": "مدينة المعاجز",
+      "author": "السيد هاشم البحراني",
+      "subtitle": "تراثي، عقائدي، توثيقي.",
+      "pagesCount": 3827,
+      "file": "books/book_7.json"
+    },
+    {
+      "id": 8,
+      "title": "الغيبة",
+      "author": "محمد بن إبراهيم النعماني (ابن أبي زينب)",
+      "subtitle": "عقائدي، روائي، تمهيدي.",
+      "pagesCount": 353,
+      "file": "books/book_8.json"
+    },
+    {
+      "id": 9,
+      "title": "غاية المرام وحجة الخصام في تعيين الإمام من طريق الخاص والعام",
+      "author": "السيد هاشم البحراني",
+      "subtitle": "استدلالي، عقائدي، جدلي.",
+      "pagesCount": 2264,
+      "file": "books/book_9.json"
+    },
+    {
+      "id": 10,
+      "title": "الفوائد المدنية والشواهد المكية",
+      "author": "محمد أمين الإسترآبادي / السيد نور الدين العاملي",
+      "subtitle": "إخباري، نقدي، تأسيسي.",
+      "pagesCount": 574,
+      "file": "books/book_10.json"
+    },
+    {
+      "id": 11,
+      "title": "بصائر الدرجات",
+      "author": "محمد بن الحسن الصفّار القمّي",
+      "subtitle": "عقائدي، روائي، مبكر.",
+      "pagesCount": 557,
+      "file": "books/book_11.json"
+    },
+    {
+      "id": 12,
+      "title": "إلزام الناصب في إثبات الحجة الغائب",
+      "author": "الشيخ علي اليزدي الحائري",
+      "subtitle": "عقائدي، احتجاجي، روائي.",
+      "pagesCount": 773,
+      "file": "books/book_12.json"
+    },
+    {
+      "id": 13,
+      "title": "كمال الدين وتمام النعمة",
+      "author": "الشيخ الصدوق",
+      "subtitle": "عقائدي، روائي، دفاعي.",
+      "pagesCount": 709,
+      "file": "books/book_13.json"
+    },
+    {
+      "id": 14,
+      "title": "تفسير الإمام العسكري ( عليه السلام )",
+      "author": "يُنسب للإمام العسكري عليه السلام",
+      "subtitle": "عقائدي، روائي، تفسيري.",
+      "pagesCount": 709,
+      "file": "books/book_14.json"
+    },
+    {
+      "id": 15,
+      "title": "الصحيفة السجادية",
+      "author": "الإمام زين العابدين ( عليه السلام)",
+      "subtitle": "روحي، أخلاقي، دعائي.",
+      "pagesCount": 128,
+      "file": "books/book_15.json"
+    },
+    {
+      "id": 16,
+      "title": "الملاحم والفتن",
+      "author": "السيد ابن طاووس",
+      "subtitle": "أخروي، روائي، توقعي.",
+      "pagesCount": 224,
+      "file": "books/book_16.json"
+    },
+    {
+      "id": 17,
+      "title": "وسائل الشيعة",
+      "author": "محمد بن الحسن الحر العاملي",
+      "subtitle": "فقهي، موسوعي، مرجعي.",
+      "pagesCount": 14470,
+      "file": "books/book_17.json"
+    },
+    {
+      "id": 18,
+      "title": "مشارق أنوار اليقين",
+      "author": "الحافظ رجب البرسي",
+      "subtitle": "فضائلي، روائي، عرفاني.",
+      "pagesCount": 348,
+      "file": "books/book_18.json"
+    },
+    {
+      "id": 19,
+      "title": "الاحتجاج",
+      "author": "أحمد بن علي الطبرسي",
+      "subtitle": "عقائدي، جدلي، روائي.",
+      "pagesCount": 752,
+      "file": "books/book_19.json"
+    },
+    {
+      "id": 20,
+      "title": "من لا يحضره الفقيه",
+      "author": "الشيخ الصدوق",
+      "subtitle": "فقهي، حديثي، أساسي.",
+      "pagesCount": 2356,
+      "file": "books/book_20.json"
+    },
+    {
+      "id": 21,
+      "title": "مفاتيح الجنان",
+      "author": "الشيخ عباس القمي",
+      "subtitle": "دعائي، عبادي، شعبي.",
+      "pagesCount": 1084,
+      "file": "books/book_21.json"
+    },
+    {
+      "id": 22,
+      "title": "إقبال الأعمال",
+      "author": "السيد ابن طاووس",
+      "subtitle": "دعائي، عبادي، شعبي.",
+      "pagesCount": 1259,
+      "file": "books/book_22.json"
+    },
+    {
+      "id": 23,
+      "title": "الاستبصار",
+      "author": "محمد بن الحسن الطوسي",
+      "subtitle": "روائي، موثوق، مُؤوَّل.",
+      "pagesCount": 1583,
+      "file": "books/book_23.json"
+    },
+    {
+      "id": 24,
+      "title": "الوافي",
+      "author": "الفيض الكاشاني",
+      "subtitle": "حديثي، إخباري، عرفاني.",
+      "pagesCount": 13150,
+      "file": "books/book_24.json"
+    },
+    {
+      "id": 25,
+      "title": "تهذيب الأحكام",
+      "author": "محمد بن الحسن الطوسي",
+      "subtitle": "روائي، موثوق، مُؤوَّل.",
+      "pagesCount": 4079,
+      "file": "books/book_25.json"
+    },
+    {
+      "id": 26,
+      "title": "رجال الكشي",
+      "author": "محمد بن الحسن الطوسي",
+      "subtitle": "تاريخي، توثيقي، رجالي.",
+      "pagesCount": 903,
+      "file": "books/book_26.json"
+    },
+    {
+      "id": 27,
+      "title": "دلائل الإمامة",
+      "author": "محمد بن جرير الطبري الإمامي",
+      "subtitle": "عقائدي، روائي، تراثي.",
+      "pagesCount": 558,
+      "file": "books/book_27.json"
+    },
+    {
+      "id": 28,
+      "title": "ثواب الأعمال وعقاب الأعمال",
+      "author": "الشيخ الصدوق",
+      "subtitle": "أخلاقي، روائي، ترغيبي.",
+      "pagesCount": 340,
+      "file": "books/book_28.json"
+    },
+    {
+      "id": 29,
+      "title": "علل الشرائع",
+      "author": "الشيخ الصدوق",
+      "subtitle": "روائي، توثيقي، عقائدي.",
+      "pagesCount": 648,
+      "file": "books/book_29.json"
+    },
+    {
+      "id": 30,
+      "title": "الحدائق الناضرة",
+      "author": "المحقق البحراني",
+      "subtitle": "فقهي، روائي، إخباري.",
+      "pagesCount": 12993,
+      "file": "books/book_30.json"
+    },
+    {
+      "id": 31,
+      "title": "مناقب آل أبي طالب",
+      "author": "ابن شهرآشوب المازندراني",
+      "subtitle": "تاريخي، فضائلي، روائي.",
+      "pagesCount": 1328,
+      "file": "books/book_31.json"
+    },
+    {
+      "id": 32,
+      "title": "الأنوار النعمانية",
+      "author": "السيد نعمة الله الجزائري",
+      "subtitle": "عقائدي، جدلي، إخباري.",
+      "pagesCount": 1066,
+      "file": "books/book_32.json"
+    },
+    {
+      "id": 33,
+      "title": "المحتضر",
+      "author": "حسن بن سليمان الحلي",
+      "subtitle": "روائي، أخروي، إخباري.",
+      "pagesCount": 331,
+      "file": "books/book_33.json"
+    },
+    {
+      "id": 34,
+      "title": "عوالم العلوم",
+      "author": "الشيخ عبد الله البحراني",
+      "subtitle": "موسوعي، روائي، إخباري.",
+      "pagesCount": 7188,
+      "file": "books/book_34.json"
+    },
+    {
+      "id": 35,
+      "title": "مصباح المتهجد",
+      "author": "الشيخ الطوسي",
+      "subtitle": "عبادي، دعائي، روائي.",
+      "pagesCount": 854,
+      "file": "books/book_35.json"
+    },
+    {
+      "id": 36,
+      "title": "بحار الأنوار",
+      "author": "العلامة المجلسي",
+      "subtitle": "موسوعي، روائي، إخباري.",
+      "pagesCount": 42880,
+      "file": "books/book_36.json"
+    },
+    {
+      "id": 40,
+      "title": "تفسير العياشي",
+      "author": "محمد بن مسعود العياشي",
+      "subtitle": "تفسيري، روائي، إخباري.",
+      "pagesCount": 743,
+      "file": "books/book_40.json"
+    },
+    {
+      "id": 41,
+      "title": "كامل الزيارات",
+      "author": "جعفر بن قولويه القمي",
+      "subtitle": "روائي، عبادي، موثوق.",
+      "pagesCount": 552,
+      "file": "books/book_41.json"
+    },
+    {
+      "id": 42,
+      "title": "تفسير نور الثقلين",
+      "author": "الشيخ الحويزي",
+      "subtitle": "تفسيري، روائي، إخباري.",
+      "pagesCount": 3341,
+      "file": "books/book_42.json"
+    },
+    {
+      "id": 43,
+      "title": "تفسير الصافي",
+      "author": "الفيض الكاشاني",
+      "subtitle": "تفسيري، روائي، إخباري.",
+      "pagesCount": 2267,
+      "file": "books/book_43.json"
+    }
+  ],
+  "buckets": {
+    "num": "index_buckets/bucket_num.json",
+    "ء": "index_buckets/bucket_1569.json",
+    "ا": "index_buckets/bucket_1575.json",
+    "ب": "index_buckets/bucket_1576.json",
+    "ت": "index_buckets/bucket_1578.json",
+    "ث": "index_buckets/bucket_1579.json",
+    "ج": "index_buckets/bucket_1580.json",
+    "ح": "index_buckets/bucket_1581.json",
+    "خ": "index_buckets/bucket_1582.json",
+    "د": "index_buckets/bucket_1583.json",
+    "ذ": "index_buckets/bucket_1584.json",
+    "ر": "index_buckets/bucket_1585.json",
+    "ز": "index_buckets/bucket_1586.json",
+    "س": "index_buckets/bucket_1587.json",
+    "ش": "index_buckets/bucket_1588.json",
+    "ص": "index_buckets/bucket_1589.json",
+    "ض": "index_buckets/bucket_1590.json",
+    "ط": "index_buckets/bucket_1591.json",
+    "ظ": "index_buckets/bucket_1592.json",
+    "ع": "index_buckets/bucket_1593.json",
+    "غ": "index_buckets/bucket_1594.json",
+    "ـ": "index_buckets/bucket_1600.json",
+    "ف": "index_buckets/bucket_1601.json",
+    "ق": "index_buckets/bucket_1602.json",
+    "ك": "index_buckets/bucket_1603.json",
+    "ل": "index_buckets/bucket_1604.json",
+    "م": "index_buckets/bucket_1605.json",
+    "ن": "index_buckets/bucket_1606.json",
+    "ه": "index_buckets/bucket_1607.json",
+    "و": "index_buckets/bucket_1608.json",
+    "ي": "index_buckets/bucket_1610.json",
+    "پ": "index_buckets/bucket_1662.json",
+    "چ": "index_buckets/bucket_1670.json",
+    "ژ": "index_buckets/bucket_1688.json",
+    "گ": "index_buckets/bucket_1711.json"
+  }
+}
